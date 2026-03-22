@@ -93,7 +93,7 @@ export function WorkflowDetailClient({ id }: { id: string }) {
               </h1>
               <p className="font-motive text-[14px] text-[rgba(255,255,255,0.45)] m-0">
                 Created {(() => {
-                  const raw = workflow.created_at || workflow.createdAt
+                  const raw = workflow.created_at || (workflow as any).createdAt
                   if (!raw) return '—'
                   const d = new Date(raw)
                   return isNaN(d.getTime()) ? '—' : format(d, 'MMM d, yyyy')
