@@ -13,6 +13,7 @@ import { ToggleSwitch } from '@/features/workflows/components/ToggleSwitch'
 import { Skeleton } from '@/features/workflows/components/Skeleton'
 import { ConfirmModal } from '@/features/workflows/components/ConfirmModal'
 import { RunDetailDrawer } from '@/features/workflows/drawers/RunDetailDrawer'
+import { WorkflowToggle } from '@/features/workflows/components/WorkflowToggle'
 import type { Step } from '@/features/workflows/types/workflow'
 
 export function WorkflowDetailClient({ id }: { id: string }) {
