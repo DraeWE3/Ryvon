@@ -785,7 +785,7 @@ export async function updateWorkflow({
   try {
     const [result] = await db
       .update(workflow)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...data, updatedAt: new Date() } as any)
       .where(eq(workflow.id, id))
       .returning();
     return result;
@@ -880,7 +880,7 @@ export async function updateRun({
   try {
     const [result] = await db
       .update(workflowRun)
-      .set(data)
+      .set(data as any)
       .where(eq(workflowRun.id, id))
       .returning();
     return result;

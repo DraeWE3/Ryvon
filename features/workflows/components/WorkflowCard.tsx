@@ -67,7 +67,7 @@ export function WorkflowCard({ workflow, onToggle, onRun }: WorkflowCardProps) {
 
       {/* Description */}
       <p className="font-motive text-[13px] text-[rgba(255,255,255,0.40)] leading-relaxed m-0 mb-8 flex-1 relative z-10">
-        {workflow.trigger_description || workflow.triggerDescription || "No description provided."}
+        {workflow.trigger_description || (workflow as any).triggerDescription || "No description provided."}
       </p>
 
       {/* Footer Actions */}
