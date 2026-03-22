@@ -3,13 +3,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import Logo from "@/public/images/logo.png";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { User } from "next-auth";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { PlusIcon, TrashIcon } from "@/components/icons";
+import { WorkflowSidebarList } from "@/features/workflows/components/WorkflowSidebarList";
 import {
   getChatHistoryPaginationKey,
   SidebarHistory,
@@ -43,6 +44,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { setOpenMobile, toggleSidebar } = useSidebar();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
@@ -93,6 +95,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             <div className="sidebar-section">
               <h3 className="sidebar-section-label">Features</h3>
               <div className="flex flex-col gap-1">
+                <Link href="/" className="sidebar-nav-item" onClick={() => setOpenMobile(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sidebar-nav-icon text-[rgba(255,255,255,0.60)]">
+                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                  <span>Home</span>
+                </Link>
                 <Link href="/tts" className="sidebar-nav-item" onClick={() => setOpenMobile(false)}>
                   <img src="/img-sidebar/tts-icon.svg" alt="" className="sidebar-nav-icon sidebar-nav-icon1" />
                   <span>Text-to-Speech</span>
@@ -101,21 +110,28 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   <img src="/img-sidebar/call-icon.svg" alt="" className="sidebar-nav-icon sidebar-nav-icon2" />
                   <span>Voice call</span>
                 </Link>
-                <Link href="/automation" className="sidebar-nav-item" onClick={() => setOpenMobile(false)}>
+                <Link 
+                  href="/workflows" 
+                  className={`sidebar-nav-item ${pathname?.startsWith('/workflows') ? 'border-l-2 border-[#3071e1] bg-[rgba(48,113,225,0.08)]' : ''}`} 
+                  onClick={() => setOpenMobile(false)}
+                >
                   <img src="/img-sidebar/automation.svg" alt="" className="sidebar-nav-icon" />
-                  <span>Workflow Automation</span>
+                  <span className={pathname?.startsWith('/workflows') ? "text-[#ffffff]" : ""}>Workflows</span>
                 </Link>
-                {/* <Link href="/" className="sidebar-nav-item" onClick={() => setOpenMobile(false)}>
-                  <img src="/img-sidebar/new-chat.svg" alt="" className="sidebar-nav-icon" />
-                  <span>Home</span>
-                </Link> */}
+
               </div>
             </div>
 
-            <div className="recent-activity-section">
-              <h3 className="sidebar-section-label">Recent Activity</h3>
-              <SidebarHistory user={user} />
-            </div>
+            {pathname?.startsWith("/workflows") ? (
+              <div className="flex-1 mt-4 border-t border-[rgba(255,255,255,0.06)] pt-2 overflow-hidden flex flex-col h-full">
+                <WorkflowSidebarList userId={user?.id} />
+              </div>
+            ) : (
+              <div className="recent-activity-section">
+                <h3 className="sidebar-section-label">Recent Activity</h3>
+                <SidebarHistory user={user} />
+              </div>
+            )}
           </div>
 
           <div className="sidebar-footer-card-container">

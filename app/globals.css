@@ -771,8 +771,15 @@
 
 /* ===========================chat================================ */
 
+.bg-chat-image {
+  background-image: url('/img/chat-bg.webp');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
 .chat{
-    background-image: url('/img/chat-bg.webp');
+  background-image: url('/img/chat-bg.webp');
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
@@ -888,6 +895,26 @@
 
 .messages-container::-webkit-scrollbar {
   display: none;
+}
+
+.canvas-preview {
+ border-radius: 1rem;
+ overflow: hidden;
+ border-top: 1px solid #0080FF;
+ border-bottom: 1px solid #000000;
+ background-color: #000000;
+ background-image: 
+    linear-gradient(#0080ff63, #000000),
+    linear-gradient(#0080ff37, #000000)
+ ;
+ background-size: 1px 100%;
+ background-position: 0 0, 100% 0;
+ background-repeat: no-repeat;
+ box-shadow: inset 0 -12px 24px #0080ff41;
+}
+
+.font-motive {
+  font-family: 'motive-reg', sans-serif !important;
 }
 
 /* User asked for chatinput height 20vh, preserved here */
@@ -1242,8 +1269,9 @@ textarea:focus {
 -webkit-backdrop-filter: blur(4px);
 backdrop-filter: blur(4px);
 border: 1px solid rgba(255, 255, 255, 0.089);
-  padding: 0.3rem 2.5rem; /* Added vertical padding */
-  border-radius: 5rem;
+   padding: 0 1.5rem;
+  border-radius: 1rem;
+  margin-top: 0.7rem;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -2010,4 +2038,113 @@ body:has([data-state="open"]) .sidebar-toggle-external {
     .login-button {
         max-width: 100%;
     }
+}
+
+
+
+
+/* ======================workflow automation============================== */
+
+.workflow-bg{
+  background-image: url('/img/workflow-bg.webp') !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.workflow-new-bg2 {
+  background-image: url('/img/workflow-new-bg2.webp') !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.workflow-new-bg-sidebar {
+  background-image: url('/img/workflow-new-bg-sidebar.webp') !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+/* ==================== React Flow Canvas Theme ==================== */
+
+.react-flow__pane {
+  background: transparent !important;
+}
+
+.react-flow__edge-path {
+  stroke: #0062FF !important;
+  stroke-width: 2px;
+}
+
+.react-flow__edge.animated path {
+  animation: reactflow-edge-dash 1.5s linear infinite;
+}
+
+@keyframes reactflow-edge-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.react-flow__connection-line {
+  stroke: #0062FF !important;
+  stroke-width: 2px;
+  stroke-dasharray: 5 5;
+}
+
+.react-flow__handle {
+  transition: all 0.15s ease;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 8px rgba(0, 98, 255, 0.6);
+}
+
+.react-flow__minimap {
+  background: rgba(5, 8, 18, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+}
+
+.react-flow__controls {
+  display: none !important;
+}
+
+.react-flow__selection {
+  border: 1px solid #0062FF !important;
+  background: rgba(0, 98, 255, 0.08) !important;
+}
+
+.react-flow__nodesselection-rect {
+  border: 1px solid #0062FF !important;
+  background: rgba(0, 98, 255, 0.05) !important;
+}
+
+/* Custom styling for Streamdown auto-generated code block headers */
+[data-streamdown="code-block-header"],
+.canvas-preview [data-streamdown="code-block-header"] {
+    background: linear-gradient(to right, #0080FF, #000000) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-streamdown="code-block-header"] span,
+[data-streamdown="code-block-header"] button {
+    color: #ffffff !important;
+}
+
+/* Custom scroll to bottom button style matching chat AI aesthetic */
+.scroll-down-btn {
+  background: rgba(11, 12, 16, 0.8) !important;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 98, 255, 0.5) !important; 
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0, 98, 255, 0.3) !important;
+  color: #fff !important;
+}
+
+.scroll-down-btn:hover {
+  background: rgba(0, 98, 255, 0.2) !important;
+  border-color: rgba(0, 98, 255, 0.8) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 15px rgba(0, 98, 255, 0.5) !important;
 }

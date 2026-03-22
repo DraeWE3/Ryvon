@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useArtifact } from "@/hooks/use-artifact";
 import type { ArtifactKind } from "./artifact";
 import { FileIcon, LoaderIcon, MessageIcon, PencilEditIcon } from "./icons";
+import { useSidebar } from "./ui/sidebar";
 
 const getActionText = (
   type: "create" | "update" | "request-suggestions",
@@ -34,11 +35,14 @@ function PureDocumentToolResult({
   isReadonly,
 }: DocumentToolResultProps) {
   const { setArtifact } = useArtifact();
+  const { setOpen, setOpenMobile } = useSidebar();
 
   return (
     <button
       className="flex w-fit cursor-pointer flex-row items-start gap-3 rounded-xl border bg-background px-3 py-2"
       onClick={(event) => {
+        setOpen(false);
+        setOpenMobile(false);
         if (isReadonly) {
           toast.error(
             "Viewing files in shared chats is currently not supported."
@@ -100,11 +104,14 @@ function PureDocumentToolCall({
   isReadonly,
 }: DocumentToolCallProps) {
   const { setArtifact } = useArtifact();
+  const { setOpen, setOpenMobile } = useSidebar();
 
   return (
     <button
       className="cursor pointer flex w-fit flex-row items-start justify-between gap-3 rounded-xl border px-3 py-2"
       onClick={(event) => {
+        setOpen(false);
+        setOpenMobile(false);
         if (isReadonly) {
           toast.error(
             "Viewing files in shared chats is currently not supported."

@@ -62,6 +62,7 @@ function PureMultimodalInput({
   selectedModelId,
   onModelChange,
   usage,
+  isArtifactVisible,
 }: {
   chatId: string;
   input: string;
@@ -78,6 +79,7 @@ function PureMultimodalInput({
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
   usage?: AppUsage;
+  isArtifactVisible?: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -352,34 +354,38 @@ function PureMultimodalInput({
       />
 
       <div className="input-actions">
-        <div className="left">
-          <div
-            className="selection cursor-pointer"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <img src="/img/att.svg" alt="" />
-            <p>Attach</p>
-          </div>
-          <div className="selection cursor-pointer">
-            <img src="/img/set.svg" alt="" />
-            <p>Settings</p>
-             <div className="opacity-0 absolute w-full h-full"> 
-                {/* Hidden model selector to keep functionality accessible if needed */}
-                <ModelSelectorCompact
-                  onModelChange={onModelChange}
-                  selectedModelId={selectedModelId}
-                />
+        {!isArtifactVisible && (
+          <div className="left">
+            <div
+              className="selection cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <img src="/img/att.svg" alt="" />
+              <p>Attach</p>
+            </div>
+            <div className="selection cursor-pointer">
+              <img src="/img/set.svg" alt="" />
+              <p>Settings</p>
+               <div className="opacity-0 absolute w-full h-full"> 
+                  {/* Hidden model selector to keep functionality accessible if needed */}
+                  <ModelSelectorCompact
+                    onModelChange={onModelChange}
+                    selectedModelId={selectedModelId}
+                  />
+              </div>
+            </div>
+            <div className="selection cursor-pointer">
+              <img src="/img/opt.svg" alt="" />
+              <p>Options</p>
             </div>
           </div>
-          <div className="selection cursor-pointer">
-            <img src="/img/opt.svg" alt="" />
-            <p>Options</p>
-          </div>
-        </div>
-        <div className="right">
-          <div className="mic-btn cursor-pointer">
-            <img src="/img/mic.svg" alt="" />
-          </div>
+        )}
+        <div className="right" style={{ marginLeft: isArtifactVisible ? "auto" : undefined }}>
+          {!isArtifactVisible && (
+            <div className="mic-btn cursor-pointer">
+              <img src="/img/mic.svg" alt="" />
+            </div>
+          )}
           <div
             className="generate-btn cursor-pointer"
             onClick={() => {
@@ -412,6 +418,9 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.selectedModelId !== nextProps.selectedModelId) {
+      return false;
+    }
+    if (prevProps.isArtifactVisible !== nextProps.isArtifactVisible) {
       return false;
     }
 

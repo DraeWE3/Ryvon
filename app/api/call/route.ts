@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/(auth)/auth';
-import { saveCallLog } from '@/lib/db/queries';
+import { saveCallLog, updateCallLogStatus } from '@/lib/db/queries';
 
 // POST endpoint - Initiate call
 export async function POST(request: NextRequest) {
@@ -114,8 +114,8 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
 
-    // Save to database
-    await saveCallLog({
+    // Save to database and get the returned record
+    const [logRecord] = await saveCallLog({
       userId: session.user.id,
       phoneNumber: phoneNumber,
       assistantId: targetAssistantId,
@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       callId: data.id,
+      logId: logRecord?.id,
       status: data.status,
     });
 
@@ -150,6 +151,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const callId = searchParams.get('callId');
+    const logId = searchParams.get('logId');
 
     if (!callId) {
       return NextResponse.json(
@@ -202,23 +204,22 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
 
-    // If call is finished, update database
+    // If call is finished, update database with final status
     if (data.status === 'completed' || data.status === 'ended' || data.status === 'failed') {
-      try {
-        // We need to find the log ID by Vapi's callId.
-        // For simplicity during this task, I'll search by callId in metadata.
-        // Actually, let's keep it simple: the frontend could pass the log ID,
-        // or we just trust the Vapi ID match since it's stored in metadata.
-        // Let's just update the log entry that has this callId in its metadata.
-        
-        // BETTER: The frontend already has the log ID if we returned it, or we look it up.
-        // Let's just update based on the Vapi record for now using a new query helper if needed.
-        // Actually, let's just use the data and return it to the frontend.
-        // The frontend can then trigger a separate save if needed, or we do it here.
-        
-        // I'll add a helper in queries.ts to update by Vapi Call ID.
-      } catch (err) {
-        console.error('Failed to update call log status:', err);
+      if (logId) {
+        try {
+          await updateCallLogStatus({
+            id: logId,
+            status: data.status,
+            transcript: data.transcript || undefined,
+            summary: data.summary || undefined,
+            duration: data.duration?.toString() || undefined,
+            recordingUrl: data.recordingUrl || undefined,
+          });
+          console.log('Call log updated successfully for logId:', logId);
+        } catch (err) {
+          console.error('Failed to update call log status:', err);
+        }
       }
     }
 

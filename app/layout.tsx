@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { QueryProvider } from "@/components/query-provider";
+import { Toaster as HotToaster } from "react-hot-toast";
 
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
@@ -76,7 +78,10 @@ export default function RootLayout({
           enableSystem
         >
           <Toaster position="top-center" />
-          <SessionProvider>{children}</SessionProvider>
+          <HotToaster position="top-center" />
+          <QueryProvider>
+            <SessionProvider>{children}</SessionProvider>
+          </QueryProvider>
           <SpeedInsights />
         </ThemeProvider>
       </body>

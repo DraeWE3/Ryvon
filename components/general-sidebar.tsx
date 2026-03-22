@@ -77,6 +77,13 @@ export function GeneralSidebar({ user }: { user: User | undefined }) {
             <div className="sidebar-section">
               <h3 className="sidebar-section-label">Features</h3>
               <div className="flex flex-col gap-1">
+                <Link href="/" className="sidebar-nav-item" onClick={() => setOpenMobile(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sidebar-nav-icon text-[rgba(255,255,255,0.60)]">
+                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                  <span>Home</span>
+                </Link>
                 <Link href="/tts" className="sidebar-nav-item" onClick={() => setOpenMobile(false)}>
                   <img src="/img-sidebar/tts-icon.svg" alt="" className="sidebar-nav-icon sidebar-nav-icon1" />
                   <span>Text-to-Speech</span>
@@ -85,9 +92,9 @@ export function GeneralSidebar({ user }: { user: User | undefined }) {
                   <img src="/img-sidebar/call-icon.svg" alt="" className="sidebar-nav-icon sidebar-nav-icon2" />
                   <span>Voice call</span>
                 </Link>
-                <Link href="/automation" className="sidebar-nav-item" onClick={() => setOpenMobile(false)}>
+                <Link href="/workflows" className="sidebar-nav-item" onClick={() => setOpenMobile(false)}>
                   <img src="/img-sidebar/automation.svg" alt="" className="sidebar-nav-icon" />
-                  <span>Workflow Automation</span>
+                  <span>Workflows</span>
                 </Link>
               </div>
             </div>

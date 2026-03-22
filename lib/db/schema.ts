@@ -209,3 +209,75 @@ export const usage = pgTable("Usage", {
 });
 
 export type Usage = InferSelectModel<typeof usage>;
+
+export const workflow = pgTable("Workflow", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+  name: text("name").notNull(),
+  triggerType: varchar("triggerType", { enum: ["cron", "event", "manual"] })
+    .notNull()
+    .default("manual"),
+  triggerValue: text("triggerValue").notNull().default("manual"),
+  triggerDescription: text("triggerDescription").notNull().default(""),
+  category: text("category").notNull().default("General"),
+  icon: text("icon").notNull().default("Workflow"),
+  steps: jsonb("steps").notNull().default([]),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type Workflow = InferSelectModel<typeof workflow>;
+
+export const workflowRun = pgTable("WorkflowRun", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  workflowId: uuid("workflowId")
+    .notNull()
+    .references(() => workflow.id),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+  status: varchar("status", {
+    enum: ["pending", "running", "success", "failed", "cancelled"],
+  })
+    .notNull()
+    .default("pending"),
+  triggeredBy: varchar("triggeredBy").notNull().default("manual"),
+  startedAt: timestamp("startedAt").notNull().defaultNow(),
+  completedAt: timestamp("completedAt"),
+  stepResults: jsonb("stepResults").notNull().default([]),
+  error: text("error"),
+});
+
+export type WorkflowRun = InferSelectModel<typeof workflowRun>;
+
+export const connectorAuth = pgTable(
+  "ConnectorAuth",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id),
+    provider: varchar("provider", { length: 64 }).notNull(),
+    accessToken: text("accessToken").notNull(),
+    refreshToken: text("refreshToken"),
+    tokenType: varchar("tokenType", { length: 32 }).default("Bearer"),
+    scope: text("scope"),
+    expiresAt: timestamp("expiresAt"),
+    accountEmail: varchar("accountEmail", { length: 128 }),
+    accountName: varchar("accountName", { length: 128 }),
+    metadata: jsonb("metadata"),
+    connectedAt: timestamp("connectedAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueUserProvider: unique("ConnectorAuth_userId_provider_unique").on(
+      table.userId,
+      table.provider
+    ),
+  })
+);
+
+export type ConnectorAuth = InferSelectModel<typeof connectorAuth>;

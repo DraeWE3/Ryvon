@@ -16,10 +16,14 @@ function PureChatHeader({
   chatId,
   selectedVisibilityType,
   isReadonly,
+  className,
+  style,
 }: {
   chatId: string;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
+  className?: string;
+  style?: React.CSSProperties;
 }) {
   const router = useRouter();
   const { open } = useSidebar();
@@ -27,7 +31,7 @@ function PureChatHeader({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="chat-top">
+    <div className={cn("chat-top", className)} style={style}>
       <div className="flex items-center gap-3">
         <SidebarToggle className="sidebar-toggle-external text-white" />
         <div className="btn2 btn cursor-pointer desktop-only">
@@ -89,6 +93,8 @@ export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
   return (
     prevProps.chatId === nextProps.chatId &&
     prevProps.selectedVisibilityType === nextProps.selectedVisibilityType &&
-    prevProps.isReadonly === nextProps.isReadonly
+    prevProps.isReadonly === nextProps.isReadonly &&
+    prevProps.className === nextProps.className &&
+    prevProps.style === nextProps.style
   );
 });

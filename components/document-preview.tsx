@@ -21,6 +21,7 @@ import { FileIcon, FullscreenIcon, ImageIcon, LoaderIcon } from "./icons";
 import { ImageEditor } from "./image-editor";
 import { SpreadsheetEditor } from "./sheet-editor";
 import { Editor } from "./text-editor";
+import { useSidebar } from "./ui/sidebar";
 
 type DocumentPreviewProps = {
   isReadonly: boolean;
@@ -102,7 +103,7 @@ export function DocumentPreview({
   }
 
   return (
-    <div className="relative w-full cursor-pointer">
+    <div className="relative w-full cursor-pointer canvas-preview flex flex-col">
       <HitboxLayer
         hitboxRef={hitboxRef}
         result={result}
@@ -119,8 +120,8 @@ export function DocumentPreview({
 }
 
 const LoadingSkeleton = ({ artifactKind }: { artifactKind: ArtifactKind }) => (
-  <div className="w-full">
-    <div className="flex h-[57px] flex-row items-center justify-between gap-2 rounded-t-2xl border border-b-0 p-4 dark:border-zinc-700 dark:bg-muted">
+  <div className="w-full canvas-preview">
+    <div className="flex h-[57px] flex-row items-center justify-between gap-2 p-4">
       <div className="flex flex-row items-center gap-3">
         <div className="text-muted-foreground">
           <div className="size-4 animate-pulse rounded-md bg-muted-foreground/20" />
@@ -132,11 +133,11 @@ const LoadingSkeleton = ({ artifactKind }: { artifactKind: ArtifactKind }) => (
       </div>
     </div>
     {artifactKind === "image" ? (
-      <div className="overflow-y-scroll rounded-b-2xl border border-t-0 bg-muted dark:border-zinc-700">
+      <div className="overflow-y-scroll rounded-b-2xl">
         <div className="h-[257px] w-full animate-pulse bg-muted-foreground/20" />
       </div>
     ) : (
-      <div className="overflow-y-scroll rounded-b-2xl border border-t-0 bg-muted p-8 pt-4 dark:border-zinc-700">
+      <div className="overflow-y-scroll rounded-b-2xl p-8 pt-4">
         <InlineDocumentSkeleton />
       </div>
     )}
@@ -154,8 +155,12 @@ const PureHitboxLayer = ({
     updaterFn: UIArtifact | ((currentArtifact: UIArtifact) => UIArtifact)
   ) => void;
 }) => {
+  const { setOpen, setOpenMobile } = useSidebar();
+
   const handleClick = useCallback(
     (event: MouseEvent<HTMLElement>) => {
+      setOpen(false);
+      setOpenMobile(false);
       const boundingBox = event.currentTarget.getBoundingClientRect();
 
       setArtifact((artifact) =>
@@ -212,7 +217,7 @@ const PureDocumentHeader = ({
   kind: ArtifactKind;
   isStreaming: boolean;
 }) => (
-  <div className="flex flex-row items-start justify-between gap-2 rounded-t-2xl border border-b-0 p-4 sm:items-center dark:border-zinc-700 dark:bg-muted">
+  <div className="flex flex-row items-start justify-between gap-2 p-4 sm:items-center">
     <div className="flex flex-row items-start gap-3 sm:items-center">
       <div className="text-muted-foreground">
         {isStreaming ? (
@@ -246,7 +251,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
   const { artifact } = useArtifact();
 
   const containerClassName = cn(
-    "h-[257px] overflow-y-scroll rounded-b-2xl border border-t-0 dark:border-zinc-700 dark:bg-muted",
+    "h-[257px] overflow-y-scroll rounded-b-2xl",
     {
       "p-4 sm:px-14 sm:py-16": document.kind === "text",
       "p-0": document.kind === "code",

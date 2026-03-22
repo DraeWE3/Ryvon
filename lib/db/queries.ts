@@ -33,6 +33,12 @@ import {
   vote,
   callLogs,
   type CallLog,
+  workflow,
+  type Workflow,
+  workflowRun,
+  type WorkflowRun,
+  connectorAuth,
+  type ConnectorAuth,
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
@@ -594,9 +600,15 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
   }
 }
 
-export async function saveCallLog(params: Partial<CallLog> & { userId: string; phoneNumber: string }) {
+export async function saveCallLog(params: {
+  userId: string;
+  phoneNumber: string;
+  assistantId?: string | null;
+  status?: string | null;
+  metadata?: Record<string, unknown> | null;
+}) {
   try {
-    return await db.insert(callLogs).values(params as any).returning();
+    return await db.insert(callLogs).values(params).returning();
   } catch (_error) {
     throw new ChatSDKError("bad_request:database", "Failed to save call log");
   }
@@ -639,5 +651,403 @@ export async function updateCallLogStatus({
       .where(eq(callLogs.id, id));
   } catch (_error) {
     throw new ChatSDKError("bad_request:database", "Failed to update call log");
+  }
+}
+
+export async function deleteCallLog({ id }: { id: string }) {
+  try {
+    return await db.delete(callLogs).where(eq(callLogs.id, id));
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to delete call log");
+  }
+}
+
+// ==================== Workflows ====================
+
+export async function getWorkflowsByUserId({ userId }: { userId: string }) {
+  try {
+    return await db
+      .select()
+      .from(workflow)
+      .where(eq(workflow.userId, userId))
+      .orderBy(desc(workflow.createdAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get workflows by user id"
+    );
+  }
+}
+
+export async function getActiveWorkflowsByTriggerType({
+  triggerType,
+}: {
+  triggerType: "cron" | "event" | "manual";
+}) {
+  try {
+    return await db
+      .select()
+      .from(workflow)
+      .where(and(eq(workflow.triggerType, triggerType), eq(workflow.active, true)));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get active workflows by trigger type"
+    );
+  }
+}
+
+export async function getActiveWorkflowsByEventValue({
+  eventValue,
+}: {
+  eventValue: string;
+}) {
+  try {
+    return await db
+      .select()
+      .from(workflow)
+      .where(
+        and(
+          eq(workflow.triggerType, "event"),
+          eq(workflow.triggerValue, eventValue),
+          eq(workflow.active, true)
+        )
+      );
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get workflows by event value"
+    );
+  }
+}
+
+export async function getWorkflowById({ id }: { id: string }) {
+  try {
+    const [result] = await db
+      .select()
+      .from(workflow)
+      .where(eq(workflow.id, id));
+    return result ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get workflow by id"
+    );
+  }
+}
+
+export async function createWorkflow(data: {
+  userId: string;
+  name: string;
+  triggerType: "cron" | "event" | "manual";
+  triggerValue: string;
+  triggerDescription: string;
+  category?: string;
+  icon?: string;
+  steps: any[];
+  active?: boolean;
+}) {
+  try {
+    const [result] = await db
+      .insert(workflow)
+      .values({
+        userId: data.userId,
+        name: data.name,
+        triggerType: data.triggerType,
+        triggerValue: data.triggerValue,
+        triggerDescription: data.triggerDescription,
+        category: data.category ?? "General",
+        icon: data.icon ?? "Workflow",
+        steps: data.steps,
+        active: data.active ?? true,
+      })
+      .returning();
+    return result;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to create workflow");
+  }
+}
+
+export async function updateWorkflow({
+  id,
+  data,
+}: {
+  id: string;
+  data: Partial<{
+    name: string;
+    triggerType: string;
+    triggerValue: string;
+    triggerDescription: string;
+    steps: any[];
+    active: boolean;
+  }>;
+}) {
+  try {
+    const [result] = await db
+      .update(workflow)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(workflow.id, id))
+      .returning();
+    return result;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to update workflow");
+  }
+}
+
+export async function deleteWorkflowById({ id }: { id: string }) {
+  try {
+    // Delete runs first (FK constraint)
+    await db.delete(workflowRun).where(eq(workflowRun.workflowId, id));
+    const [result] = await db
+      .delete(workflow)
+      .where(eq(workflow.id, id))
+      .returning();
+    return result;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to delete workflow");
+  }
+}
+
+// ==================== Workflow Runs ====================
+
+export async function getRunsByWorkflowId({
+  workflowId,
+  limit = 20,
+}: {
+  workflowId: string;
+  limit?: number;
+}) {
+  try {
+    return await db
+      .select()
+      .from(workflowRun)
+      .where(eq(workflowRun.workflowId, workflowId))
+      .orderBy(desc(workflowRun.startedAt))
+      .limit(limit);
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get runs by workflow id"
+    );
+  }
+}
+
+export async function createRun(data: {
+  workflowId: string;
+  userId: string;
+  triggeredBy?: string;
+}) {
+  try {
+    const [result] = await db
+      .insert(workflowRun)
+      .values({
+        workflowId: data.workflowId,
+        userId: data.userId,
+        triggeredBy: data.triggeredBy ?? "manual",
+        status: "pending",
+      })
+      .returning();
+    return result;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to create run");
+  }
+}
+
+export async function getRunById({ id }: { id: string }) {
+  try {
+    const [result] = await db
+      .select()
+      .from(workflowRun)
+      .where(eq(workflowRun.id, id));
+    return result ?? null;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to get run by id");
+  }
+}
+
+export async function updateRun({
+  id,
+  data,
+}: {
+  id: string;
+  data: Partial<{
+    status: string;
+    completedAt: Date;
+    stepResults: any[];
+    error: string;
+  }>;
+}) {
+  try {
+    const [result] = await db
+      .update(workflowRun)
+      .set(data)
+      .where(eq(workflowRun.id, id))
+      .returning();
+    return result;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to update run");
+  }
+}
+
+export async function getWorkflowStats({ userId }: { userId: string }) {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [runsToday] = await db
+      .select({ count: count(workflowRun.id) })
+      .from(workflowRun)
+      .where(
+        and(
+          eq(workflowRun.userId, userId),
+          gte(workflowRun.startedAt, todayStart)
+        )
+      );
+
+    const [totalRuns] = await db
+      .select({ count: count(workflowRun.id) })
+      .from(workflowRun)
+      .where(eq(workflowRun.userId, userId));
+
+    return {
+      runs_today: runsToday?.count ?? 0,
+      total_runs: totalRuns?.count ?? 0,
+    };
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get workflow stats"
+    );
+  }
+}
+
+// ==================== Connector Auth ====================
+
+export async function getConnectorsByUserId({ userId }: { userId: string }) {
+  try {
+    return await db
+      .select()
+      .from(connectorAuth)
+      .where(eq(connectorAuth.userId, userId))
+      .orderBy(desc(connectorAuth.connectedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get connectors by user id"
+    );
+  }
+}
+
+export async function getConnectorByUserAndProvider({
+  userId,
+  provider,
+}: {
+  userId: string;
+  provider: string;
+}) {
+  try {
+    const [result] = await db
+      .select()
+      .from(connectorAuth)
+      .where(
+        and(
+          eq(connectorAuth.userId, userId),
+          eq(connectorAuth.provider, provider)
+        )
+      );
+    return result ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get connector by provider"
+    );
+  }
+}
+
+export async function upsertConnectorAuth(data: {
+  userId: string;
+  provider: string;
+  accessToken: string;
+  refreshToken?: string;
+  tokenType?: string;
+  scope?: string;
+  expiresAt?: Date;
+  accountEmail?: string;
+  accountName?: string;
+  metadata?: any;
+}) {
+  try {
+    // Check if exists
+    const existing = await getConnectorByUserAndProvider({
+      userId: data.userId,
+      provider: data.provider,
+    });
+
+    if (existing) {
+      const [result] = await db
+        .update(connectorAuth)
+        .set({
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken ?? existing.refreshToken,
+          tokenType: data.tokenType ?? existing.tokenType,
+          scope: data.scope ?? existing.scope,
+          expiresAt: data.expiresAt ?? existing.expiresAt,
+          accountEmail: data.accountEmail ?? existing.accountEmail,
+          accountName: data.accountName ?? existing.accountName,
+          metadata: data.metadata ?? existing.metadata,
+          updatedAt: new Date(),
+        })
+        .where(eq(connectorAuth.id, existing.id))
+        .returning();
+      return result;
+    }
+
+    const [result] = await db
+      .insert(connectorAuth)
+      .values({
+        userId: data.userId,
+        provider: data.provider,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        tokenType: data.tokenType || "Bearer",
+        scope: data.scope,
+        expiresAt: data.expiresAt,
+        accountEmail: data.accountEmail,
+        accountName: data.accountName,
+        metadata: data.metadata,
+      })
+      .returning();
+    return result;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to upsert connector auth"
+    );
+  }
+}
+
+export async function deleteConnectorAuth({
+  userId,
+  provider,
+}: {
+  userId: string;
+  provider: string;
+}) {
+  try {
+    const [result] = await db
+      .delete(connectorAuth)
+      .where(
+        and(
+          eq(connectorAuth.userId, userId),
+          eq(connectorAuth.provider, provider)
+        )
+      )
+      .returning();
+    return result;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete connector auth"
+    );
   }
 }

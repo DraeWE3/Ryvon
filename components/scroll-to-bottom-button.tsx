@@ -19,13 +19,13 @@ export function ScrollToBottomButton({
   return (
     <button
       className={cn(
-        "absolute bottom-5 right-5 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-background border border-border shadow-sm transition-opacity duration-300 hover:bg-muted",
+        "absolute bottom-5 right-5 z-[500] flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 scroll-down-btn",
         className // Apply custom classes
       )}
       onClick={() => scrollToBottom()}
       aria-label="Scroll to bottom"
     >
-      <ArrowDown className="h-4 w-4 text-muted-foreground" />
+      <ArrowDown className="size-5 text-white" />
     </button>
   );
 }

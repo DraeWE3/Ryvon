@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { SidebarToggle } from '@/components/sidebar-toggle';
 import Papa from 'papaparse';
@@ -39,7 +39,20 @@ interface PhoneRegion {
   digits: number;
 }
 
-const DEFAULT_ASSISTANT_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || '';
+interface RecentCallLog {
+  id: string;
+  phoneNumber: string;
+  assistantId?: string;
+  status?: string;
+  transcript?: string;
+  summary?: string;
+  duration?: string;
+  recordingUrl?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+const DEFAULT_ASSISTANT_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || '50987159-147b-46d8-b5ec-9b530c673dd4';
 
 export default function AICallAgent() {
   const { theme } = useTheme();
@@ -52,12 +65,13 @@ export default function AICallAgent() {
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'in-call' | 'completed' | 'failed'>('idle');
   const [callProgress, setCallProgress] = useState(0);
   const [callId, setCallId] = useState<string | null>(null);
+  const [callLogId, setCallLogId] = useState<string | null>(null);
   const [callSummary, setCallSummary] = useState<string | null>(null);
   const [callTranscript, setCallTranscript] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
   
   // Configuration State
-  const [assistantId, setAssistantId] = useState('50987159-147b-46d8-b5ec-9b530c673dd4'); // Default to Nova
+  const [assistantId, setAssistantId] = useState(DEFAULT_ASSISTANT_ID);
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
   const [customPrompt, setCustomPrompt] = useState('');
   const [promptDescription, setPromptDescription] = useState('');
@@ -69,14 +83,22 @@ export default function AICallAgent() {
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // UI State
   const [activeTab, setActiveTab] = useState<'manual' | 'import' | 'recent'>('manual');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [recentCalls, setRecentCalls] = useState<any[]>([]);
+  const [recentCalls, setRecentCalls] = useState<RecentCallLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    // Cleanup polling interval on unmount
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -86,6 +108,7 @@ export default function AICallAgent() {
   }, [activeTab]);
 
   const fetchRecentCalls = async () => {
+    setIsLoadingLogs(true);
     try {
       const response = await fetch('/api/call/logs');
       const data = await response.json();
@@ -94,6 +117,23 @@ export default function AICallAgent() {
       }
     } catch (error) {
       console.error('Failed to fetch recent calls:', error);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  const handleDeleteLog = async (logId: string) => {
+    try {
+      const response = await fetch(`/api/call/logs/${logId}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        setRecentCalls(prev => prev.filter(log => log.id !== logId));
+      } else {
+        setErrorMessage(data.error || 'Failed to delete log');
+      }
+    } catch (error) {
+      console.error('Failed to delete log:', error);
+      setErrorMessage('Failed to delete log');
     }
   };
 
@@ -311,10 +351,11 @@ export default function AICallAgent() {
       console.log('VAPI call initiated:', data.callId);
 
       setCallId(data.callId);
+      setCallLogId(data.logId || null);
       setCallProgress(30);
       setCallStatus('in-call');
 
-      pollCallStatus(data.callId);
+      pollCallStatus(data.callId, data.logId);
     } catch (error) {
       console.error('Call error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to start call');
@@ -355,6 +396,40 @@ export default function AICallAgent() {
     });
   };
 
+  const waitForBatchCallCompletion = (callId: string, contactIndex: number, logId?: string): Promise<void> => {
+    return new Promise((resolve) => {
+      let polls = 0;
+      const maxPolls = 150; // ~5 min per call max
+      const interval = setInterval(async () => {
+        polls++;
+        try {
+          const params = new URLSearchParams({ callId });
+          if (logId) params.append('logId', logId);
+          const response = await fetch(`/api/call?${params.toString()}`);
+          const data = await response.json();
+          if (data.status === 'completed' || data.status === 'ended') {
+            clearInterval(interval);
+            setContacts(prev => prev.map((c, idx) => idx === contactIndex ? { ...c, status: 'completed' } : c));
+            resolve();
+          } else if (data.status === 'failed' || data.status === 'error') {
+            clearInterval(interval);
+            setContacts(prev => prev.map((c, idx) => idx === contactIndex ? { ...c, status: 'failed' } : c));
+            resolve();
+          }
+          if (polls >= maxPolls) {
+            clearInterval(interval);
+            setContacts(prev => prev.map((c, idx) => idx === contactIndex ? { ...c, status: 'completed' } : c));
+            resolve();
+          }
+        } catch {
+          clearInterval(interval);
+          setContacts(prev => prev.map((c, idx) => idx === contactIndex ? { ...c, status: 'failed' } : c));
+          resolve();
+        }
+      }, 3000);
+    });
+  };
+
   const startBatchCalls = async () => {
     if (contacts.length === 0) return;
     setIsBatchProcessing(true);
@@ -379,9 +454,8 @@ export default function AICallAgent() {
 
         const data = await response.json();
         if (data.success) {
-          // In a real scenario, we'd poll status here too, or let it run async
-          // For now, let's mark as completed once initiated for simplicity in batch view
-          setContacts(prev => prev.map((c, idx) => idx === i ? { ...c, status: 'completed' } : c));
+          // Poll for actual completion before moving to next contact
+          await waitForBatchCallCompletion(data.callId, i, data.logId);
         } else {
           setContacts(prev => prev.map((c, idx) => idx === i ? { ...c, status: 'failed' } : c));
         }
@@ -449,15 +523,22 @@ export default function AICallAgent() {
     document.body.removeChild(link);
   };
 
-  const pollCallStatus = (id: string) => {
+  const pollCallStatus = (id: string, logId?: string) => {
     let pollCount = 0;
     const maxPolls = 300;
+
+    // Clean up any existing interval
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
 
     const interval = setInterval(async () => {
       pollCount++;
 
       try {
-        const response = await fetch(`/api/call?callId=${id}`);
+        const params = new URLSearchParams({ callId: id });
+        if (logId) params.append('logId', logId);
+        const response = await fetch(`/api/call?${params.toString()}`);
         const data = await response.json();
 
         console.log('Call status:', data.status);
@@ -471,15 +552,18 @@ export default function AICallAgent() {
           setCallTranscript(data.transcript || null);
           setIsProcessing(false);
           clearInterval(interval);
+          pollIntervalRef.current = null;
         } else if (data.status === 'failed' || data.status === 'error') {
           setCallStatus('failed');
           setIsProcessing(false);
           setErrorMessage('Call failed');
           clearInterval(interval);
+          pollIntervalRef.current = null;
         }
 
         if (pollCount >= maxPolls) {
           clearInterval(interval);
+          pollIntervalRef.current = null;
           setCallStatus('completed');
           setIsProcessing(false);
         }
@@ -487,6 +571,8 @@ export default function AICallAgent() {
         console.error('Status poll error:', error);
       }
     }, 2000);
+
+    pollIntervalRef.current = interval;
   };
 
   const handleReset = () => {
@@ -494,6 +580,7 @@ export default function AICallAgent() {
     setCallProgress(0);
     setIsProcessing(false);
     setCallId(null);
+    setCallLogId(null);
     setCallSummary(null);
     setCallTranscript(null);
     setErrorMessage('');
@@ -577,14 +664,14 @@ export default function AICallAgent() {
             
             {/* Desktop Buttons */}
             <div className="hidden lg:flex gap-3">
-              <button className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-black/30 backdrop-blur-xl border border-white/10 rounded-full text-sm font-medium text-white hover:border-[#1EA7FF] hover:shadow-[0_0_20px_rgba(30,167,255,0.3)] transition-all duration-250">
+              <button onClick={() => setShowConfig(!showConfig)} className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-black/30 backdrop-blur-xl border border-white/10 rounded-full text-sm font-medium text-white hover:border-[#1EA7FF] hover:shadow-[0_0_20px_rgba(30,167,255,0.3)] transition-all duration-250">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <span>Settings</span>
               </button>
-              <button className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-black/30 backdrop-blur-xl border border-white/10 rounded-full text-sm font-medium text-white hover:border-[#1EA7FF] hover:shadow-[0_0_20px_rgba(30,167,255,0.3)] transition-all duration-250">
+              <button onClick={downloadReport} className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-black/30 backdrop-blur-xl border border-white/10 rounded-full text-sm font-medium text-white hover:border-[#1EA7FF] hover:shadow-[0_0_20px_rgba(30,167,255,0.3)] transition-all duration-250">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
@@ -659,6 +746,7 @@ export default function AICallAgent() {
                 </button>
               </div>
 
+              {showConfig && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
@@ -778,6 +866,7 @@ export default function AICallAgent() {
                   </div>
                 </div>
               </div>
+              )}
             </section>
 
             <div className="h-px bg-white/5 mb-10"></div>
@@ -1190,10 +1279,14 @@ export default function AICallAgent() {
                 </div>
               )}
 
-              {/* Recent Contacts Tab */}
               {activeTab === 'recent' && (
                 <div className="mt-6">
-                  {recentCalls.length === 0 ? (
+                  {isLoadingLogs ? (
+                    <div className="py-20 text-center">
+                      <div className="w-10 h-10 border-2 border-[#1EA7FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-gray-400 text-sm">Loading recent calls...</p>
+                    </div>
+                  ) : recentCalls.length === 0 ? (
                     <div className="py-20 text-center">
                       <Clock className="w-12 h-12 text-gray-700 mx-auto mb-4" />
                       <p className="text-gray-400 text-sm">Your recent call history will appear here</p>
@@ -1247,6 +1340,7 @@ export default function AICallAgent() {
                                 </a>
                               )}
                               <button 
+                                onClick={() => handleDeleteLog(log.id)}
                                 className="p-2 text-gray-600 hover:text-red-500 transition-colors"
                                 title="Delete Log"
                               >

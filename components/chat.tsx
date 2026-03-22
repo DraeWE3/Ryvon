@@ -180,6 +180,8 @@ export function Chat({
         transition={{ duration: 0.5 }}
       >
         <ChatHeader
+          style={{ display: isArtifactVisible ? "none" : undefined }}
+          className={isArtifactVisible ? "!hidden" : ""}
           chatId={id}
           isReadonly={isReadonly}
           selectedVisibilityType={initialVisibilityType}
@@ -229,6 +231,7 @@ export function Chat({
                       className="w-full flex justify-center"
                     >
                       <MultimodalInput
+                        isArtifactVisible={isArtifactVisible}
                         attachments={attachments}
                         chatId={id}
                         input={input}

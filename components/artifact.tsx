@@ -302,7 +302,7 @@ function PureArtifact({
                   damping: 30,
                 },
               }}
-              className="relative h-dvh w-[400px] shrink-0 bg-muted dark:bg-background"
+              className="relative h-dvh w-[400px] shrink-0 bg-chat-image"
               exit={{
                 opacity: 0,
                 x: 0,
@@ -336,6 +336,7 @@ function PureArtifact({
 
                 <div className="relative flex w-full flex-row items-end gap-2 px-4 pb-4">
                   <MultimodalInput
+                    isArtifactVisible={true}
                     attachments={attachments}
                     chatId={chatId}
                     className="bg-background dark:bg-muted"
@@ -391,7 +392,7 @@ function PureArtifact({
                     },
                   }
             }
-            className="fixed flex h-dvh flex-col overflow-y-scroll border-zinc-200 bg-background md:border-l dark:border-zinc-700 dark:bg-muted"
+            className="fixed flex h-dvh flex-col overflow-y-scroll canvas-preview font-motive text-white"
             exit={{
               opacity: 0,
               scale: 0.5,
@@ -460,7 +461,7 @@ function PureArtifact({
               />
             </div>
 
-            <div className="h-full max-w-full! items-center overflow-y-scroll bg-background dark:bg-muted">
+            <div className="h-full max-w-full! items-center overflow-y-scroll bg-transparent">
               <artifactDefinition.content
                 content={
                   isCurrentVersion
