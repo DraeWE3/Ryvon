@@ -5,7 +5,7 @@ import { DefaultChatTransport } from "ai";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
-import { unstable_serialize } from "swr/infinite";
+import useSWRInfinite, { unstable_serialize } from "swr/infinite";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChatHeader } from "@/components/chat-header";
 import {
@@ -30,7 +30,7 @@ import { Artifact } from "./artifact";
 import { useDataStream } from "./data-stream-provider";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
-import { getChatHistoryPaginationKey } from "./sidebar-history";
+import { getChatHistoryPaginationKey, type ChatHistory } from "./sidebar-history";
 import { toast } from "./toast";
 import type { VisibilityType } from "./visibility-selector";
 import { Greeting } from "./greeting";
@@ -74,6 +74,15 @@ export function Chat({
     return () => window.removeEventListener("popstate", handlePopState);
   }, [router]);
   const { setDataStream } = useDataStream();
+
+  const { data: paginatedChatHistories } = useSWRInfinite<ChatHistory>(
+    getChatHistoryPaginationKey,
+    fetcher
+  );
+
+  const hasEmptyChatHistory = paginatedChatHistories
+    ? paginatedChatHistories.every((page) => page?.chats?.length === 0)
+    : false;
 
   const [input, setInput] = useState<string>("");
   const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
@@ -251,7 +260,7 @@ export function Chat({
                     </motion.div>
                  )}
                  
-                 {messages.length === 0 && (
+                 {messages.length === 0 && hasEmptyChatHistory && (
                    <motion.div
                      initial={{ opacity: 0, y: 10 }}
                      animate={{ opacity: 1, y: 0 }}

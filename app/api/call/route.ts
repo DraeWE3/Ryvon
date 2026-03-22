@@ -55,12 +55,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (language === 'hi') {
-      assistantOverrides.transcriber = {
-        provider: 'deepgram',
-        model: 'nova-2',
-        language: 'hi',
-      };
-      // Optionally set a Hindi voice if needed, otherwise Vapi uses default
+      const hindiInstruction = "CRITICAL INSTRUCTION: You MUST speak entirely in Hindi. Do not use English. Always reply in the Hindi language.";
+
+      if (!assistantOverrides.model) {
+        assistantOverrides.model = {
+          provider: 'openai',
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: hindiInstruction,
+            },
+          ],
+        };
+      } else if (assistantOverrides.model.messages && assistantOverrides.model.messages.length > 0) {
+        assistantOverrides.model.messages[0].content += `\n\n${hindiInstruction}`;
+      }
     }
 
     console.log('Initiating call with:', {

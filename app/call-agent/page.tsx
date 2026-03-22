@@ -547,7 +547,14 @@ export default function AICallAgent() {
 
         if (data.status === 'completed' || data.status === 'ended') {
           setCallProgress(100);
-          setCallStatus('completed');
+          
+          if (data.endedReason && !['customer-ended-call', 'assistant-ended-call'].includes(data.endedReason)) {
+            setCallStatus('failed');
+            setErrorMessage(`Call dropped: ${data.endedReason.replace(/-/g, ' ')}`);
+          } else {
+            setCallStatus('completed');
+          }
+          
           setCallSummary(data.summary || null);
           setCallTranscript(data.transcript || null);
           setIsProcessing(false);
@@ -556,7 +563,7 @@ export default function AICallAgent() {
         } else if (data.status === 'failed' || data.status === 'error') {
           setCallStatus('failed');
           setIsProcessing(false);
-          setErrorMessage('Call failed');
+          setErrorMessage(data.endedReason ? `Call failed: ${data.endedReason.replace(/-/g, ' ')}` : 'Call failed');
           clearInterval(interval);
           pollIntervalRef.current = null;
         }
