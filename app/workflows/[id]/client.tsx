@@ -229,7 +229,7 @@ export function WorkflowDetailClient({ id }: { id: string }) {
             open={showDeleteConfirm}
             title="Delete Workflow"
             message={`Are you sure you want to delete "${workflow?.name}"? This action cannot be undone and will also remove all run history.`}
-            confirmLabel={isDeleting ? 'Deleting...' : 'Delete'}
+            loading={isDeleting}
             onConfirm={handleDelete}
             onCancel={() => setShowDeleteConfirm(false)}
           />
