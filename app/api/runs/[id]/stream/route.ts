@@ -77,7 +77,6 @@ ${step.params && Object.keys(step.params).length > 0 ? `Parameters: ${JSON.strin
 
 Produce a concise, realistic output as if you actually executed this step. Keep it under 3 sentences. Be specific and actionable.${contextLines}`,
               prompt: `Execute this step now and return the result.`,
-              maxTokens: 200,
             })
 
             const duration = Date.now() - startTime
