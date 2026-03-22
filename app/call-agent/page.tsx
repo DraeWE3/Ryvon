@@ -1322,7 +1322,7 @@ export default function AICallAgent() {
                               {log.summary && (
                                 <button 
                                   onClick={() => {
-                                    const blob = new Blob([log.summary], { type: 'text/plain' });
+                                    const blob = new Blob([log.summary || ''], { type: 'text/plain' });
                                     const url = URL.createObjectURL(blob);
                                     const a = document.createElement('a');
                                     a.href = url;
