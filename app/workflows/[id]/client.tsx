@@ -138,18 +138,18 @@ export function WorkflowDetailClient({ id }: { id: string }) {
                 
                 <div className="mt-4 pl-2 flex flex-col sm:flex-row sm:items-center gap-3">
                   <span className="font-motive text-[11px] text-[#8cdff4] border border-[#8cdff4] bg-[rgba(140,223,244,0.08)] rounded-[20px] px-[10px] py-[2px] uppercase">
-                    {workflow.trigger_type || workflow.triggerType}
+                    {workflow.trigger_type || (workflow as any).triggerType}
                   </span>
                   <span className="font-mono text-[13px] text-white">
-                    {workflow.trigger_value || workflow.triggerValue}
+                    {workflow.trigger_value || (workflow as any).triggerValue}
                   </span>
                 </div>
                 <p className="font-motive text-[13px] text-[rgba(255,255,255,0.40)] mt-2 pl-2">
-                  {workflow.trigger_description || workflow.triggerDescription}
+                  {workflow.trigger_description || (workflow as any).triggerDescription}
                 </p>
 
                 {/* Cron: show auto-run status */}
-                {(workflow.trigger_type || workflow.triggerType) === 'cron' && (
+                {(workflow.trigger_type || (workflow as any).triggerType) === 'cron' && (
                   <div className="mt-3 pl-2 flex items-center gap-2">
                     <span className="w-[6px] h-[6px] rounded-full bg-[#10b981] animate-pulse" />
                     <span className="font-motive text-[11px] text-[#10b981]">
@@ -159,7 +159,7 @@ export function WorkflowDetailClient({ id }: { id: string }) {
                 )}
 
                 {/* Event: show webhook URL */}
-                {(workflow.trigger_type || workflow.triggerType) === 'event' && (
+                {(workflow.trigger_type || (workflow as any).triggerType) === 'event' && (
                   <div className="mt-3 pl-2">
                     <span className="font-motive text-[11px] text-[rgba(255,255,255,0.30)] block mb-1">Webhook URL</span>
                     <div className="flex items-center gap-2">
@@ -179,7 +179,7 @@ export function WorkflowDetailClient({ id }: { id: string }) {
                       </button>
                     </div>
                     <p className="font-motive text-[10px] text-[rgba(255,255,255,0.25)] mt-1">
-                      Send POST with {`{"event": "${(workflow.trigger_value || workflow.triggerValue || '').replace('webhook:', '')}"}`}
+                      Send POST with {`{"event": "${(workflow.trigger_value || (workflow as any).triggerValue || '').replace('webhook:', '')}"}`}
                     </p>
                   </div>
                 )}
