@@ -1,21 +1,117 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { upsertConnectorAuth } from '@/lib/db/queries'
+import { OAUTH_PROVIDERS } from '../auth/route'
 
-// OAuth provider token endpoints
-const TOKEN_URLS: Record<string, string> = {
-  google: 'https://oauth2.googleapis.com/token',
-  slack: 'https://slack.com/api/oauth.v2.access',
+// User info endpoints for each provider (to get display name/email)
+const USER_INFO_FETCHERS: Record<string, (accessToken: string) => Promise<{ email: string; name: string }>> = {
+  google: async (token) => {
+    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.email || '', name: data.name || '' }
+  },
+  slack: async (token) => {
+    const res = await fetch(`https://slack.com/api/auth.test?token=${token}`)
+    const data = await res.json()
+    return { email: '', name: data.user || data.team || '' }
+  },
+  notion: async (token) => {
+    const res = await fetch('https://api.notion.com/v1/users/me', {
+      headers: { Authorization: `Bearer ${token}`, 'Notion-Version': '2022-06-28' },
+    })
+    const data = await res.json()
+    return { email: data.person?.email || '', name: data.name || '' }
+  },
+  hubspot: async (token) => {
+    const res = await fetch('https://api.hubapi.com/oauth/v1/access-tokens/' + token)
+    const data = await res.json()
+    return { email: data.user || '', name: data.hub_domain || '' }
+  },
+
+  github: async (token) => {
+    const res = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'Ryvon' } })
+    const data = await res.json()
+    return { email: data.email || '', name: data.login || data.name || '' }
+  },
+  discord: async (token) => {
+    const res = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.email || '', name: `${data.username}#${data.discriminator}` }
+  },
+  linkedin: async (token) => {
+    const res = await fetch('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.email || '', name: data.name || '' }
+  },
+  airtable: async (token) => {
+    const res = await fetch('https://api.airtable.com/v0/meta/whoami', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.email || '', name: data.id || '' }
+  },
+  asana: async (token) => {
+    const res = await fetch('https://app.asana.com/api/1.0/users/me', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.data?.email || '', name: data.data?.name || '' }
+  },
+  dropbox: async (token) => {
+    const res = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` },
+    })
+    const data = await res.json()
+    return { email: data.email || '', name: data.name?.display_name || '' }
+  },
+  'microsoft-365': async (token) => {
+    const res = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.mail || data.userPrincipalName || '', name: data.displayName || '' }
+  },
+  meta: async (token) => {
+    const res = await fetch(`https://graph.facebook.com/me?fields=name,email&access_token=${token}`)
+    const data = await res.json()
+    return { email: data.email || '', name: data.name || '' }
+  },
+  'zoho-crm': async (token) => {
+    const res = await fetch('https://www.zohoapis.com/crm/v2/users?type=CurrentUser', { headers: { Authorization: `Zoho-oauthtoken ${token}` } })
+    const data = await res.json()
+    const user = data.users?.[0]
+    return { email: user?.email || '', name: user?.full_name || '' }
+  },
+  jira: async (token) => {
+    const res = await fetch('https://api.atlassian.com/me', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.email || '', name: data.name || data.nickname || '' }
+  },
+  gitlab: async (token) => {
+    const res = await fetch('https://gitlab.com/api/v4/user', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.email || '', name: data.username || data.name || '' }
+  },
+  mailchimp: async (token) => {
+    const metaRes = await fetch('https://login.mailchimp.com/oauth2/metadata', { headers: { Authorization: `OAuth ${token}` } })
+    const meta = await metaRes.json()
+    return { email: meta.login?.email || '', name: meta.accountname || '' }
+  },
+  stripe: async (token) => {
+    return { email: '', name: 'Stripe Account' }
+  },
+  intercom: async (token) => {
+    const res = await fetch('https://api.intercom.io/me', { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } })
+    const data = await res.json()
+    return { email: data.email || '', name: data.name || '' }
+  },
+  webflow: async (token) => {
+    const res = await fetch('https://api.webflow.com/v2/token/authorized_by', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.email || '', name: data.firstName || '' }
+  },
+  pipedrive: async (token) => {
+    const res = await fetch('https://api.pipedrive.com/v1/users/me', { headers: { Authorization: `Bearer ${token}` } })
+    const data = await res.json()
+    return { email: data.data?.email || '', name: data.data?.name || '' }
+  },
 }
 
-const USER_INFO_URLS: Record<string, string> = {
-  google: 'https://www.googleapis.com/oauth2/v2/userinfo',
-  slack: 'https://slack.com/api/auth.test',
-}
-
-const CLIENT_ENV_MAP: Record<string, { id: string; secret: string }> = {
-  google: { id: 'GOOGLE_CLIENT_ID', secret: 'GOOGLE_CLIENT_SECRET' },
-  slack: { id: 'SLACK_CLIENT_ID', secret: 'SLACK_CLIENT_SECRET' },
-}
+// Default user info fetcher (returns empty)
+const defaultFetcher = async () => ({ email: '', name: '' })
 
 // GET /api/connectors/[provider]/callback — handles OAuth redirect
 export async function GET(
@@ -51,15 +147,15 @@ export async function GET(
     )
   }
 
-  const envKeys = CLIENT_ENV_MAP[provider]
-  if (!envKeys) {
+  const config = OAUTH_PROVIDERS[provider]
+  if (!config) {
     return NextResponse.redirect(
       new URL(`/workflows/connectors?error=unknown_provider`, request.url)
     )
   }
 
-  const clientId = process.env[envKeys.id]
-  const clientSecret = process.env[envKeys.secret]
+  const clientId = process.env[config.clientIdEnv]
+  const clientSecret = process.env[config.clientSecretEnv]
 
   if (!clientId || !clientSecret) {
     return NextResponse.redirect(
@@ -67,59 +163,72 @@ export async function GET(
     )
   }
 
-  const tokenUrl = TOKEN_URLS[provider]
   const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
   const redirectUri = `${baseUrl}/api/connectors/${provider}/callback`
 
   try {
     // Exchange code for tokens
-    const tokenRes = await fetch(tokenUrl, {
+    // Notion uses Basic Auth instead of body params
+    const isNotion = provider === 'notion'
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+    if (isNotion) {
+      headers['Authorization'] = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+    }
+
+    // GitHub needs Accept header for JSON
+    if (provider === 'github') {
+      headers['Accept'] = 'application/json'
+    }
+
+    const bodyParams: Record<string, string> = {
+      code,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+    }
+
+    // Most providers want client_id/secret in body (not Notion)
+    if (!isNotion) {
+      bodyParams.client_id = clientId
+      bodyParams.client_secret = clientSecret
+    }
+
+    const tokenRes = await fetch(config.tokenUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code',
-      }),
+      headers,
+      body: new URLSearchParams(bodyParams),
     })
 
     const tokenData = await tokenRes.json()
 
     if (!tokenRes.ok || tokenData.error) {
-      console.error('Token exchange failed:', tokenData)
+      console.error(`Token exchange failed for ${provider}:`, tokenData)
       return NextResponse.redirect(
         new URL(`/workflows/connectors?error=token_exchange_failed`, request.url)
       )
     }
 
+    // Extract access token (varies by provider)
+    const accessToken =
+      tokenData.access_token ||
+      tokenData.authed_user?.access_token ||
+      tokenData.bot_token ||
+      ''
+
     // Get user info for display
     let accountEmail = ''
     let accountName = ''
+    const fetcher = USER_INFO_FETCHERS[provider] || defaultFetcher
 
-    const userInfoUrl = USER_INFO_URLS[provider]
-    if (userInfoUrl) {
-      try {
-        const accessToken = tokenData.access_token || tokenData.authed_user?.access_token
-        if (accessToken) {
-          if (provider === 'google') {
-            const infoRes = await fetch(userInfoUrl, {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            })
-            const info = await infoRes.json()
-            accountEmail = info.email || ''
-            accountName = info.name || ''
-          } else if (provider === 'slack') {
-            const infoRes = await fetch(`${userInfoUrl}?token=${accessToken}`)
-            const info = await infoRes.json()
-            accountName = info.user || info.team || ''
-          }
-        }
-      } catch {
-        // Non-critical — just log
-        console.warn('Failed to fetch user info for', provider)
+    try {
+      if (accessToken) {
+        const info = await fetcher(accessToken)
+        accountEmail = info.email
+        accountName = info.name
       }
+    } catch (e) {
+      console.warn(`Failed to fetch user info for ${provider}:`, e)
     }
 
     // Compute expiry
@@ -132,7 +241,7 @@ export async function GET(
     await upsertConnectorAuth({
       userId: state.userId,
       provider,
-      accessToken: tokenData.access_token || tokenData.authed_user?.access_token || '',
+      accessToken,
       refreshToken: tokenData.refresh_token,
       tokenType: tokenData.token_type || 'Bearer',
       scope: tokenData.scope,
@@ -142,6 +251,8 @@ export async function GET(
       metadata: {
         team: tokenData.team?.name,
         teamId: tokenData.team?.id,
+        instanceUrl: tokenData.instance_url,
+        workspaceId: tokenData.workspace_id,
       },
     })
 

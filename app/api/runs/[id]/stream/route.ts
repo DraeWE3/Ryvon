@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getRunById, getWorkflowById, updateRun } from '@/lib/db/queries'
 import { auth } from '@/app/(auth)/auth'
-import { generateText } from 'ai'
-import { myProvider } from '@/lib/ai/providers'
+import { executeStep } from '@/lib/connectors/executor'
 
 // SSE streaming endpoint for live run updates.
 // Each step is executed by AI, producing real output instead of dummy text.
@@ -62,22 +61,14 @@ export async function GET(
           sendEvent({ status: 'running', step_results: [...stepResults] })
 
           try {
-            // Build a context-aware prompt for this step
-            const contextLines = previousOutputs.length > 0
-              ? `\n\nPrevious step outputs:\n${previousOutputs.map((o, idx) => `Step ${idx + 1}: ${o}`).join('\n')}`
-              : ''
-
-            const { text: aiOutput } = await generateText({
-              model: myProvider.languageModel('chat-model'),
-              system: `You are an AI workflow execution agent inside Ryvon Intelligence. You are executing step ${i + 1} of a workflow called "${workflow.name}".
-
-Your agent role is: ${step.agent || 'General Agent'}
-Your task for this step is: ${step.action || 'Process'}
-${step.params && Object.keys(step.params).length > 0 ? `Parameters: ${JSON.stringify(step.params)}` : ''}
-
-Produce a concise, realistic output as if you actually executed this step. Keep it under 3 sentences. Be specific and actionable.${contextLines}`,
-              prompt: `Execute this step now and return the result.`,
+            // Execute step using our real connector handlers
+            const output = await executeStep({
+              userId: session.user.id,
+              step,
+              previousOutputs,
             })
+
+            const aiOutput = output
 
             const duration = Date.now() - startTime
 

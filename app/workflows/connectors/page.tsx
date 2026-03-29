@@ -1,10 +1,11 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { X } from 'lucide-react'
 
 interface Connector {
   id: string
@@ -18,6 +19,7 @@ interface Connector {
   accountEmail: string | null
   accountName: string | null
   connectedAt: string | null
+  apiUrl: string | null
 }
 
 import { WorkflowToggle } from '@/features/workflows/components/WorkflowToggle'
@@ -34,9 +36,45 @@ export default function ConnectorsPage() {
     },
   })
 
+  // Modal State
+  const [addingKeyFor, setAddingKeyFor] = useState<Connector | null>(null)
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [accountNameInput, setAccountNameInput] = useState('')
+  const [isSavingKey, setIsSavingKey] = useState(false)
+
   const handleConnect = (providerId: string) => {
-    // Redirect to OAuth flow
-    window.location.href = `/api/connectors/${providerId}/auth`
+    // Open OAuth flow in a new tab
+    window.open(`/api/connectors/${providerId}/auth`, '_blank')
+  }
+
+  const handleSaveApiKey = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!addingKeyFor || !apiKeyInput) return
+
+    setIsSavingKey(true)
+    try {
+      const res = await fetch('/api/connectors/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: addingKeyFor.id,
+          apiKey: apiKeyInput,
+          accountName: accountNameInput || null,
+        }),
+      })
+
+      if (!res.ok) throw new Error('Failed to save API Key')
+      
+      toast.success(`${addingKeyFor.name} connected successfully`)
+      queryClient.invalidateQueries({ queryKey: ['connectors'] })
+      setAddingKeyFor(null)
+      setApiKeyInput('')
+      setAccountNameInput('')
+    } catch (err) {
+      toast.error('Failed to save API Key')
+    } finally {
+      setIsSavingKey(false)
+    }
   }
 
   const handleDisconnect = async (providerId: string) => {
@@ -62,7 +100,7 @@ export default function ConnectorsPage() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-transparent p-8 overflow-y-auto workflow-bg">
+    <div className="flex h-full flex-col bg-transparent p-8 overflow-y-auto workflow-bg relative">
       <div className="flex items-center gap-4 mb-6">
         <WorkflowToggle className="p-0 mr-0" />
         {/* Breadcrumbs */}
@@ -129,11 +167,11 @@ export default function ConnectorsPage() {
               {/* Connection info */}
               {connector.connected && (connector.accountEmail || connector.accountName) && (
                 <div className="mb-3 py-2 px-3 bg-[rgba(16,185,129,0.06)] border border-[rgba(16,185,129,0.15)] rounded-[6px]">
-                  <span className="font-motive text-[11px] text-[#10b981]">
+                  <span className="font-motive text-[11px] text-[#10b981] truncate block">
                     Connected{connector.accountEmail ? ` as ${connector.accountEmail}` : connector.accountName ? ` as ${connector.accountName}` : ''}
                   </span>
                   {connector.connectedAt && (
-                    <span className="font-motive text-[10px] text-[rgba(255,255,255,0.20)] block mt-[2px]">
+                    <span className="font-motive text-[10px] text-[rgba(255,255,255,0.30)] block mt-[2px]">
                       {(() => {
                         const d = new Date(connector.connectedAt)
                         return isNaN(d.getTime()) ? '' : `Since ${format(d, 'MMM d, yyyy')}`
@@ -144,11 +182,12 @@ export default function ConnectorsPage() {
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* OAuth Connect */}
                 {connector.oauthSupported && !connector.connected && (
                   <button
                     onClick={() => handleConnect(connector.id)}
-                    className="font-motive text-[11px] text-[#ffffff] rounded-full py-[5px] px-4 transition-all text-center active:scale-95"
+                    className="cursor-pointer font-motive text-[11px] text-[#ffffff] rounded-full py-[5px] px-4 transition-all text-center active:scale-95 border border-transparent hover:border-[#8cdff4]"
                     style={{
                       background: 'linear-gradient(180deg, #A8CEE5 0%, #007DC0 50%, #001C3C 100%)',
                       boxShadow: '0 4px 15px rgba(0, 125, 192, 0.3)',
@@ -157,29 +196,137 @@ export default function ConnectorsPage() {
                     Connect
                   </button>
                 )}
-                {connector.connected && connector.oauthSupported && (
+
+                {/* Manual Add Key */}
+                {!connector.oauthSupported && !connector.connected && connector.id !== 'http' && connector.id !== 'ai' && (
+                  <button
+                    onClick={() => setAddingKeyFor(connector)}
+                    className="cursor-pointer font-motive text-[11px] text-[#ffffff] bg-[rgba(255,255,255,0.10)] hover:bg-[rgba(255,255,255,0.15)] border border-[rgba(255,255,255,0.08)] rounded-[6px] py-[6px] px-3 transition-colors text-center"
+                  >
+                    Add Key
+                  </button>
+                )}
+
+                {/* Disconnect Buttons */}
+                {connector.connected && connector.id !== 'http' && connector.id !== 'ai' && (
                   <button
                     onClick={() => handleDisconnect(connector.id)}
-                    className="flex-1 font-motive text-[12px] text-[rgba(255,100,100,0.70)] hover:text-[rgba(255,100,100,1)] border border-[rgba(255,100,100,0.15)] hover:border-[rgba(255,100,100,0.30)] rounded-[6px] py-[6px] px-3 transition-colors text-center"
+                    className="cursor-pointer font-motive text-[11px] text-[rgba(255,100,100,0.70)] hover:text-[rgba(255,100,100,1)] bg-[rgba(255,100,100,0.05)] border border-[rgba(255,100,100,0.15)] hover:border-[rgba(255,100,100,0.30)] rounded-[6px] py-[6px] px-3 transition-colors text-center"
                   >
                     Disconnect
                   </button>
                 )}
-                {connector.connected && !connector.oauthSupported && (
-                  <span className="font-motive text-[11px] text-[#10b981]">
+
+                {/* Built-ins */}
+                {connector.connected && (connector.id === 'http' || connector.id === 'ai') && (
+                  <span className="font-motive text-[11px] text-[rgba(255,255,255,0.5)] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.05)] rounded-[6px] py-[4px] px-2">
                     ✓ Built-in
                   </span>
                 )}
-                {!connector.connected && !connector.oauthSupported && (
-                  <span className="font-motive text-[11px] text-[rgba(255,255,255,0.25)]">
-                    Coming soon
-                  </span>
+
+                {/* API Link */}
+                {connector.apiUrl && !connector.connected && (
+                  <a
+                    href={connector.apiUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto font-motive text-[11px] text-[rgba(255,255,255,0.35)] hover:text-[#8cdff4] transition-colors flex items-center gap-1 shrink-0"
+                  >
+                    Get API Key →
+                  </a>
                 )}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Manual API Key Modal */}
+      {addingKeyFor && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.1)] rounded-[16px] w-full max-w-md shadow-2xl relative overflow-hidden flex flex-col">
+            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#8cdff4] to-transparent opacity-50" />
+            
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-[rgba(255,255,255,0.05)]">
+              <div className="flex items-center gap-3">
+                <span className="text-[24px]">{addingKeyFor.icon}</span>
+                <h2 className="font-gate text-[18px] text-white">Connect {addingKeyFor.name}</h2>
+              </div>
+              <button
+                onClick={() => setAddingKeyFor(null)}
+                className="text-[rgba(255,255,255,0.4)] hover:text-white transition-colors p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveApiKey} className="p-6 flex flex-col gap-5">
+              <p className="font-motive text-[13px] text-[rgba(255,255,255,0.6)] leading-relaxed m-0">
+                To connect Ryvon to your <strong>{addingKeyFor.name}</strong> account, paste your API Key below. This key will be encrypted and stored securely.
+              </p>
+
+              <div className="flex flex-col gap-2">
+                <label className="font-motive text-[11px] text-[rgba(255,255,255,0.5)] uppercase tracking-wider">
+                  API Key / Token *
+                </label>
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="Paste your secret key..."
+                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-4 py-3 font-mono text-[13px] text-white placeholder-[rgba(255,255,255,0.2)] focus:outline-none focus:border-[#8cdff4] focus:ring-1 focus:ring-[#8cdff4] transition-all"
+                  required
+                  autoFocus
+                />
+                {addingKeyFor.apiUrl && (
+                  <a
+                    href={addingKeyFor.apiUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-motive text-[11px] text-[#8cdff4] hover:underline"
+                  >
+                    Where do I find this?
+                  </a>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="font-motive text-[11px] text-[rgba(255,255,255,0.5)] uppercase tracking-wider">
+                  Connection Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={accountNameInput}
+                  onChange={(e) => setAccountNameInput(e.target.value)}
+                  placeholder="e.g. My Personal Account"
+                  className="w-full bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-4 py-3 font-motive text-[13px] text-white placeholder-[rgba(255,255,255,0.2)] focus:outline-none focus:border-[#8cdff4] focus:ring-1 focus:ring-[#8cdff4] transition-all"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setAddingKeyFor(null)}
+                  className="font-motive text-[13px] text-[rgba(255,255,255,0.7)] hover:text-white px-4 py-2 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!apiKeyInput || isSavingKey}
+                  className="font-motive text-[13px] text-[#000000] bg-[#8cdff4] hover:bg-white rounded-[8px] px-6 py-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {isSavingKey ? 'Connecting...' : 'Connect'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+

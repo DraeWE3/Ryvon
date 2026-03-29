@@ -88,28 +88,71 @@ export function DraggableStepCard({ step, index, onUpdate, onDelete }: Draggable
             className="w-full bg-transparent border-none outline-none font-motive text-[14px] text-white placeholder-[rgba(255,255,255,0.25)] focus:ring-0"
           />
 
-          {/* Expandable Params */}
-          {step.params && Object.keys(step.params).length > 0 && (
-            <>
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-1 mt-2 font-motive text-[11px] text-[rgba(255,255,255,0.35)] hover:text-[rgba(255,255,255,0.60)] transition-colors"
-              >
-                {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                {Object.keys(step.params).length} params
-              </button>
-              {isExpanded && (
-                <div className="mt-2 flex flex-col gap-1.5 pl-1 border-l border-[rgba(255,255,255,0.06)]">
-                  {Object.entries(step.params).map(([key, value]) => (
-                    <div key={key} className="font-mono text-[11px] text-[rgba(255,255,255,0.40)] pl-2">
-                      <span className="text-[rgba(255,255,255,0.55)]">{key}:</span>{" "}
-                      {typeof value === "object" ? JSON.stringify(value) : String(value)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {/* Interactive Parameters Editor */}
+          <div className="mt-4 border-t border-[rgba(255,255,255,0.06)] pt-3">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex items-center gap-1 font-motive text-[11px] text-[rgba(255,255,255,0.35)] hover:text-[#8cdff4] transition-colors uppercase tracking-wider mb-2"
+            >
+              {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              Configure Parameters ({(step.params && Object.keys(step.params).length) || 0})
+            </button>
+            
+            {isExpanded && (
+              <div className="flex flex-col gap-2 mt-2">
+                {/* Existing keys */}
+                {step.params && Object.entries(step.params).map(([key, value]) => (
+                  <div key={key} className="flex items-center gap-2 group/param">
+                    <input
+                      type="text"
+                      className="bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.1)] rounded-[4px] px-2 py-1 font-mono text-[11px] text-[#8cdff4] w-1/3 focus:outline-none focus:border-[#8cdff4]"
+                      value={key}
+                      onChange={(e) => {
+                        const newKey = e.target.value
+                        const newParams = { ...step.params }
+                        const val = newParams[key]
+                        delete newParams[key]
+                        if (newKey) newParams[newKey] = val
+                        onUpdate(step.id, { params: newParams })
+                      }}
+                      placeholder="Key (e.g. to)"
+                    />
+                    <input
+                      type="text"
+                      className="bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.1)] rounded-[4px] px-2 py-1 font-mono text-[11px] text-white flex-1 focus:outline-none focus:border-[#8cdff4]"
+                      value={typeof value === "object" ? JSON.stringify(value) : String(value)}
+                      onChange={(e) => {
+                        const newParams = { ...step.params, [key]: e.target.value }
+                        onUpdate(step.id, { params: newParams })
+                      }}
+                      placeholder="Value (e.g. user@example.com)"
+                    />
+                    <button
+                      onClick={() => {
+                        const newParams = { ...step.params }
+                        delete newParams[key]
+                        onUpdate(step.id, { params: newParams })
+                      }}
+                      className="text-[rgba(255,255,255,0.2)] hover:text-[#ff6464] transition-colors opacity-0 group-hover/param:opacity-100 p-1"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+                
+                {/* Add new param button */}
+                <button
+                  onClick={() => {
+                    const newParams = { ...step.params, '': '' }
+                    onUpdate(step.id, { params: newParams })
+                  }}
+                  className="font-motive text-[10px] text-[rgba(140,223,244,0.6)] hover:text-[#8cdff4] border border-[rgba(140,223,244,0.2)] hover:border-[#8cdff4] rounded-[4px] py-1 px-2 self-start transition-colors mt-1"
+                >
+                  + Add Parameter
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Delete Button */}
