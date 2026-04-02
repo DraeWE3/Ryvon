@@ -294,7 +294,16 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { provider } = await params
+  let { provider } = await params
+
+  // Map sub-tools back to their master OAuth provider config
+  const originalProvider = provider
+  if (['google-calendar', 'google-sheets', 'google-drive', 'google-analytics'].includes(provider)) {
+    provider = 'google'
+  } else if (provider === 'microsoft-teams') {
+    provider = 'microsoft-365'
+  }
+
   const config = OAUTH_PROVIDERS[provider]
 
   if (!config) {

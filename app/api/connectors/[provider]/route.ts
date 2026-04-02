@@ -14,10 +14,18 @@ export async function DELETE(
 
   const { provider } = await params
 
+  // Map sub-tools back to their master OAuth provider in the database
+  let dbProvider = provider
+  if (['google-calendar', 'google-sheets', 'google-drive', 'google-analytics'].includes(provider)) {
+    dbProvider = 'google'
+  } else if (provider === 'microsoft-teams') {
+    dbProvider = 'microsoft-365'
+  }
+
   try {
     const result = await deleteConnectorAuth({
       userId: session.user.id,
-      provider,
+      provider: dbProvider,
     })
 
     return NextResponse.json({ success: true, deleted: result })
