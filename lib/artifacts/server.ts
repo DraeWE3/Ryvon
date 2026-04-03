@@ -98,4 +98,3 @@ export const documentHandlersByArtifactKind: DocumentHandler[] = [
 ];
 
 export const artifactKinds = ["text", "code", "sheet", "image"] as const;
-export const artifactKinds = ["text", "code", "sheet", "image"] as const;
