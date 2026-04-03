@@ -69,6 +69,8 @@ export function WorkflowGrid({
             workflow={workflow} 
             onToggle={onToggle}
             onRun={() => {}} // Placeholder for direct run if needed
+            isTemplate={(workflow as any).isTemplate}
+            onUseTemplate={(workflow as any).onUseTemplate}
           />
         ))
       )}

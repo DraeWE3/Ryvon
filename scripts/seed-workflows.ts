@@ -1,16 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/(auth)/auth'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
+import { workflow, user } from '../lib/db/schema'
+import { eq, and } from 'drizzle-orm'
 
-// Pre-built workflow templates users can deploy with one click
+const sql = postgres(process.env.POSTGRES_URL!)
+const db = drizzle(sql)
+
 const templates = [
   {
     id: 'ai-sales-assistant',
     name: 'AI Sales Assistant Workflow',
-    description: 'Convert leads into booked calls automatically. +3x faster lead response, +40% higher conversion.',
     category: 'Sales',
-    trigger_type: 'event',
-    trigger_value: 'webhook:new_lead',
-    trigger_description: 'Triggered when a lead comes from website form or ad',
+    triggerType: 'event' as const,
+    triggerValue: 'webhook:new_lead',
+    triggerDescription: 'Triggered when a lead comes from website form or ad',
     steps: [
       { id: '1', agent: 'AI', action: 'Qualify lead and analyze budget, need, timeline', params: {}, depends_on: [] },
       { id: '2', agent: 'AI', action: 'Draft personalized outreach message requesting a meeting', params: {}, depends_on: ['1'] },
@@ -22,11 +25,10 @@ const templates = [
   {
     id: 'smart-client-onboarding',
     name: 'Smart Client Onboarding Flow',
-    description: 'Automates entire onboarding after client closes. Saves hours per client, looks extremely professional.',
     category: 'Operations',
-    trigger_type: 'event',
-    trigger_value: 'webhook:client_closed',
-    trigger_description: 'Triggered when a client is marked as "Closed"',
+    triggerType: 'event' as const,
+    triggerValue: 'webhook:client_closed',
+    triggerDescription: 'Triggered when a client is marked as "Closed"',
     steps: [
       { id: '1', agent: 'CRM', action: 'Fetch closed client details and service requirements', params: {}, depends_on: [] },
       { id: '2', agent: 'Email', action: 'Send automated welcome message with onboarding form', params: {}, depends_on: ['1'] },
@@ -38,11 +40,10 @@ const templates = [
   {
     id: 'ai-follow-up-engine',
     name: 'AI Follow-Up & Nurture System',
-    description: 'Ensures no lead is ever forgotten. Solves biggest leak in business, passive revenue driver.',
     category: 'Retention',
-    trigger_type: 'cron',
-    trigger_value: '0 9 * * *',
-    trigger_description: 'Runs daily at 9:00 AM to check for inactive leads',
+    triggerType: 'cron' as const,
+    triggerValue: '0 9 * * *',
+    triggerDescription: 'Runs daily at 9:00 AM to check for inactive leads',
     steps: [
       { id: '1', agent: 'CRM', action: 'Fetch leads or clients inactive for X days', params: {}, depends_on: [] },
       { id: '2', agent: 'AI', action: 'Draft smart follow-up message sharing relevant updates or offers', params: {}, depends_on: ['1'] },
@@ -53,21 +54,55 @@ const templates = [
   },
 ]
 
-export async function GET(request: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+async function main() {
+  console.log('Fetching all users...')
+  const users = await db.select().from(user)
+
+  if (users.length === 0) {
+    console.error('No users found in database. Cannot associate workflows.')
+    process.exit(1)
   }
 
-  const { searchParams } = new URL(request.url)
-  const category = searchParams.get('category')
+  for (const u of users) {
+    console.log(`Inserting workflows for user ${u.email || u.id}...`)
 
-  let filtered = templates
-  if (category) {
-    filtered = templates.filter(
-      (t) => t.category.toLowerCase() === category.toLowerCase()
-    )
+    for (const t of templates) {
+      // Check if workflow already exists to avoid duplicates
+      const existing = await db.select().from(workflow).where(
+        and(
+          eq(workflow.userId, u.id),
+          eq(workflow.name, t.name)
+        )
+      ).catch((e) => {
+        console.error(e)
+        return []
+      })
+
+      if (existing && existing.length > 0) {
+        console.log(`Skipping: ${t.name} (already exists)`)
+        continue
+      }
+
+      await db.insert(workflow).values({
+        userId: u.id,
+        name: t.name,
+        triggerType: t.triggerType,
+        triggerValue: t.triggerValue,
+        triggerDescription: t.triggerDescription,
+        category: t.category,
+        steps: t.steps,
+        active: true,
+        icon: 'Workflow',
+      })
+      console.log(`Inserted: ${t.name}`)
+    }
   }
 
-  return NextResponse.json(filtered)
+  console.log('Done!')
+  process.exit(0)
 }
+
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})

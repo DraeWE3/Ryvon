@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import { useQuery } from '@tanstack/react-query'
 import { useWorkflows, useWorkflowStats, usePatchWorkflow } from '@/features/workflows/hooks/useWorkflows'
 import { MetricCard } from '@/features/workflows/components/MetricCard'
 import { WorkflowGrid } from '@/features/workflows/components/WorkflowGrid'
@@ -28,7 +29,16 @@ export default function WorkflowsDashboard() {
     isLoading: isStatsLoading 
   } = useWorkflowStats(userId)
 
-  const { setCreateDrawerOpen } = useWorkflowUIStore()
+  const { data: templates } = useQuery({
+    queryKey: ['workflow-templates'],
+    queryFn: async () => {
+      const res = await fetch('/api/workflows/templates')
+      if (!res.ok) throw new Error('Failed to load templates')
+      return res.json()
+    },
+  })
+
+  const { setCreateDrawerOpen, setSelectedTemplate } = useWorkflowUIStore()
   const { mutate: patchWorkflow } = usePatchWorkflow()
 
   const handleToggle = (id: string, active: boolean) => {
@@ -42,6 +52,16 @@ export default function WorkflowsDashboard() {
   const totalWorkflows = workflows?.length || 0
   const activeWorkflows = workflows?.filter(w => w.active).length || 0
   const runsToday = stats?.runs_today || 0
+
+  // Combine user workflows and templates
+  const combinedWorkflows = [
+    ...(workflows || []),
+    ...(templates || []).map((t: any) => ({
+      ...t,
+      isTemplate: true,
+      onUseTemplate: setSelectedTemplate
+    }))
+  ]
 
   return (
     <div className="flex h-full flex-col p-8 overflow-y-auto workflow-bg">
@@ -104,7 +124,7 @@ export default function WorkflowsDashboard() {
           All Workflows
         </h2>
         <WorkflowGrid 
-          workflows={workflows}
+          workflows={combinedWorkflows}
           isLoading={isWorkflowsLoading}
           isError={isWorkflowsError}
           onRetry={refetchWorkflows}

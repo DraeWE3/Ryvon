@@ -18,7 +18,7 @@ const CloseIcon = () => (
 export function CreateWorkflowDrawer({ onWorkflowCreated }: { onWorkflowCreated?: () => void }) {
   const router = useRouter()
   const { data: session } = useSession()
-  const { isCreateDrawerOpen, setCreateDrawerOpen } = useWorkflowUIStore()
+  const { isCreateDrawerOpen, setCreateDrawerOpen, selectedTemplate, setSelectedTemplate } = useWorkflowUIStore()
   const { mutate: generateWorkflow, isPending } = useCreateWorkflow()
   const queryClient = useQueryClient()
   const [isCreatingManual, setIsCreatingManual] = useState(false)
@@ -66,6 +66,28 @@ export function CreateWorkflowDrawer({ onWorkflowCreated }: { onWorkflowCreated?
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isCreateDrawerOpen, setCreateDrawerOpen, step])
 
+  const handleUseTemplate = (template: any) => {
+    // Use the template description as the AI input to generate a saved workflow
+    setActiveTab('describe')
+    setInput(template.description)
+    setPreviewData({
+      name: template.name,
+      trigger_type: template.trigger_type,
+      trigger_value: template.trigger_value,
+      trigger_description: template.trigger_description,
+      steps: template.steps,
+    })
+    setStep(3)
+  }
+
+  useEffect(() => {
+    if (selectedTemplate) {
+      setCreateDrawerOpen(true)
+      handleUseTemplate(selectedTemplate)
+      setSelectedTemplate(null)
+    }
+  }, [selectedTemplate, setCreateDrawerOpen, setSelectedTemplate])
+
   if (!isCreateDrawerOpen) return null
 
   const handleGenerate = () => {
@@ -88,20 +110,6 @@ export function CreateWorkflowDrawer({ onWorkflowCreated }: { onWorkflowCreated?
     queryClient.invalidateQueries({ queryKey: ['workflows'] })
     toast.success('Workflow saved')
     setCreateDrawerOpen(false)
-  }
-
-  const handleUseTemplate = (template: any) => {
-    // Use the template description as the AI input to generate a saved workflow
-    setActiveTab('describe')
-    setInput(template.description)
-    setPreviewData({
-      name: template.name,
-      trigger_type: template.trigger_type,
-      trigger_value: template.trigger_value,
-      trigger_description: template.trigger_description,
-      steps: template.steps,
-    })
-    setStep(3)
   }
 
   const exampleChips = [
@@ -144,11 +152,38 @@ export function CreateWorkflowDrawer({ onWorkflowCreated }: { onWorkflowCreated?
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 flex flex-col">
           {step === 1 && (
-            <div className="flex flex-col animate-in fade-in duration-300">
-              <label className="font-motive text-[13px] text-[#ffffff] mb-2 block">
-                Describe your workflow
-              </label>
-              <textarea
+            <div className="flex flex-col animate-in fade-in duration-300 h-full">
+
+              {/* Tabs */}
+              <div className="flex p-1 bg-[rgba(255,255,255,0.05)] rounded-[10px] mb-6">
+                <button
+                  onClick={() => setActiveTab('describe')}
+                  className={`flex-1 font-motive text-[13px] py-[6px] rounded-[6px] transition-all ${
+                    activeTab === 'describe'
+                      ? 'bg-[rgba(255,255,255,0.15)] text-[#ffffff]'
+                      : 'text-[rgba(255,255,255,0.50)] hover:text-[#ffffff]'
+                  }`}
+                >
+                  Prompt
+                </button>
+                <button
+                  onClick={() => setActiveTab('templates')}
+                  className={`flex-1 font-motive text-[13px] py-[6px] rounded-[6px] transition-all ${
+                    activeTab === 'templates'
+                      ? 'bg-[rgba(255,255,255,0.15)] text-[#ffffff]'
+                      : 'text-[rgba(255,255,255,0.50)] hover:text-[#ffffff]'
+                  }`}
+                >
+                  Templates ✨
+                </button>
+              </div>
+
+              {activeTab === 'describe' ? (
+                <>
+                  <label className="font-motive text-[13px] text-[#ffffff] mb-2 block">
+                    Describe your workflow
+                  </label>
+                  <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="e.g. Every morning at 8am, summarize my emails and post a Slack briefing"
@@ -193,16 +228,52 @@ export function CreateWorkflowDrawer({ onWorkflowCreated }: { onWorkflowCreated?
                 <div className="flex-1 h-px bg-[rgba(255,255,255,0.08)]" />
               </div>
 
-              {/* Create Manually Button */}
-              <button
-                onClick={() => {
-                  setCreateDrawerOpen(false)
-                  router.push('/workflows/new')
-                }}
-                className="w-full border border-[rgba(255,255,255,0.10)] hover:border-[#0062FF] text-[rgba(255,255,255,0.60)] hover:text-white font-motive text-[13px] rounded-full py-[10px] px-6 mt-3 flex items-center justify-center gap-2 transition-all bg-transparent"
-              >
-                🛠️ Create Manually
-              </button>
+                {/* Create Manually Button */}
+                <button
+                  onClick={() => {
+                    setCreateDrawerOpen(false)
+                    router.push('/workflows/new')
+                  }}
+                  className="w-full border border-[rgba(255,255,255,0.10)] hover:border-[#0062FF] text-[rgba(255,255,255,0.60)] hover:text-white font-motive text-[13px] rounded-full py-[10px] px-6 mt-3 flex items-center justify-center gap-2 transition-all bg-transparent cursor-pointer"
+                >
+                  🛠️ Create Manually
+                </button>
+                </>
+              ) : (
+                <div className="flex flex-col gap-3 overflow-y-auto pr-2 pb-8 h-full">
+                  {!templates ? (
+                    <div className="text-[rgba(255,255,255,0.5)] font-motive text-[13px] text-center pt-8">Loading templates...</div>
+                  ) : templates.map((t: any) => (
+                    <div 
+                      key={t.id} 
+                      className="group bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] hover:border-[#3071e1] hover:bg-[rgba(48,113,225,0.05)] rounded-[12px] p-4 cursor-pointer transition-all flex border-l-[3px] hover:border-l-[#3071e1]"
+                      style={{ borderLeftColor: categoryColors[t.category] || '#3071e1' }}
+                      onClick={() => handleUseTemplate(t)}
+                    >
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-gate text-[14px] text-[#ffffff] leading-tight mb-1">{t.name}</h3>
+                          <span className="font-motive text-[10px] text-[rgba(255,255,255,0.4)] bg-[rgba(255,255,255,0.06)] px-2 py-0.5 rounded-full">{t.category}</span>
+                        </div>
+                        <p className="font-motive text-[12px] text-[rgba(255,255,255,0.6)] leading-relaxed mb-3">{t.description}</p>
+                        
+                        <div className="flex items-center gap-2 pt-3 mt-3 border-t border-[rgba(255,255,255,0.05)] overflow-x-hidden">
+                          {t.steps.map((s: any, i: number) => (
+                            <React.Fragment key={s.id}>
+                              <div className="flex-shrink-0 font-motive text-[10px] text-[#ffffff] bg-[#1a1a1a] border border-[#333] rounded-[4px] px-[8px] py-[3px]">
+                                {s.agent}
+                              </div>
+                              {i < t.steps.length - 1 && (
+                                <span className="text-[rgba(255,255,255,0.2)] text-[10px]">→</span>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

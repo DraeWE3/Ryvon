@@ -20,9 +20,13 @@ import { create } from 'zustand'
 interface WorkflowUIStore {
   isCreateDrawerOpen: boolean
   setCreateDrawerOpen: (open: boolean) => void
+  selectedTemplate: any | null
+  setSelectedTemplate: (template: any) => void
 }
 
 export const useWorkflowUIStore = create<WorkflowUIStore>((set) => ({
   isCreateDrawerOpen: false,
   setCreateDrawerOpen: (open) => set({ isCreateDrawerOpen: open }),
+  selectedTemplate: null,
+  setSelectedTemplate: (template: any) => set({ selectedTemplate: template }),
 }))
