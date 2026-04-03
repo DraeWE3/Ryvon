@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { upsertConnectorAuth } from '@/lib/db/queries'
-import { OAUTH_PROVIDERS } from '../auth/route'
+import { OAUTH_PROVIDERS } from '@/lib/connectors/providers'
 
 // User info endpoints for each provider (to get display name/email)
 const USER_INFO_FETCHERS: Record<string, (accessToken: string) => Promise<{ email: string; name: string }>> = {

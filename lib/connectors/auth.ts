@@ -1,7 +1,7 @@
 import { eq, and } from 'drizzle-orm'
 import { db } from '@/lib/db/queries'
 import { connectorAuth } from '@/lib/db/schema'
-import { OAUTH_PROVIDERS } from '@/app/api/connectors/[provider]/auth/route'
+import { OAUTH_PROVIDERS } from '@/lib/connectors/providers'
 
 /**
  * Retrieves a valid access token for the given user and provider.
