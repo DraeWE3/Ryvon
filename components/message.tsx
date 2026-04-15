@@ -230,15 +230,16 @@ const PurePreviewMessage = ({
              }
 
              if ((part.type as string) === "tool-listAssistants") {
+                 const p = part as any;
                  return (
-                    <Tool defaultOpen={true} key={part.toolCallId}>
-                      <ToolHeader state={part.state} type="Agent Gallery" />
+                    <Tool defaultOpen={true} key={p.toolCallId}>
+                      <ToolHeader state={p.state} type="Agent Gallery" />
                       <ToolContent>
-                        {part.state === "input-available" && <ToolInput input={part.input} />}
-                        {part.state === "output-available" && part.output && typeof part.output === "object" && "assistants" in part.output && (
+                        {p.state === "input-available" && <ToolInput input={p.input} />}
+                        {p.state === "output-available" && p.output && typeof p.output === "object" && "assistants" in p.output && (
                             <div className="flex flex-col gap-4 p-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {(part.output.assistants as any[]).map((assistant: any) => (
+                                    {(p.output.assistants as any[]).map((assistant: any) => (
                                         <div key={assistant.id} className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-[#1EA7FF]/50 transition-all group">
                                             <div className="flex items-center gap-3 mb-2">
                                                 <div className="w-10 h-10 rounded-full bg-[#1EA7FF]/10 flex items-center justify-center text-[#1EA7FF] group-hover:bg-[#1EA7FF]/20 transition-colors">
@@ -271,16 +272,17 @@ const PurePreviewMessage = ({
                    "tool-manageWorkflows": "Workflow Orchestration",
                    "tool-checkConnectors": "Connector Orchestration",
                  };
+                 const p = part as any;
                  return (
-                    <Tool defaultOpen={true} key={part.toolCallId}>
-                      <ToolHeader state={part.state} type={titleMap[part.type as string]} />
+                    <Tool defaultOpen={true} key={p.toolCallId}>
+                      <ToolHeader state={p.state} type={titleMap[p.type as string]} />
                       <ToolContent>
-                        {('state' in part && part.state === "input-available") && <ToolInput input={(part as any).input} />}
-                        {('state' in part && part.state === "output-available") && (
+                        {('state' in p && p.state === "input-available") && <ToolInput input={(p as any).input} />}
+                        {('state' in p && p.state === "output-available") && (
                           <ToolOutput
-                            errorText={(part as any).output && typeof (part as any).output === "object" && "error" in (part as any).output ? String((part as any).output.error) : undefined}
+                            errorText={p.output && typeof p.output === "object" && "error" in p.output ? String(p.output.error) : undefined}
                             output={
-                               (part as any).output && typeof (part as any).output === "object" && "success" in (part as any).output && (part as any).output.success === true ? (
+                               p.output && typeof p.output === "object" && "success" in p.output && p.output.success === true ? (
                                    <div className="bg-[#121212] border border-gray-800 p-4 rounded-xl shadow-lg mt-2 font-mono text-sm overflow-hidden text-emerald-400">
                                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-800 text-gray-400 text-xs uppercase tracking-widest">
                                            <div className="w-4 h-4 flex items-center justify-center text-emerald-400">
