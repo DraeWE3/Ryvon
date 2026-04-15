@@ -233,7 +233,7 @@ const PurePreviewMessage = ({
                  const p = part as any;
                  return (
                     <Tool defaultOpen={true} key={p.toolCallId}>
-                      <ToolHeader state={p.state} type="Agent Gallery" />
+                      <ToolHeader state={p.state} type={"Agent Gallery" as any} />
                       <ToolContent>
                         {p.state === "input-available" && <ToolInput input={p.input} />}
                         {p.state === "output-available" && p.output && typeof p.output === "object" && "assistants" in p.output && (
@@ -275,7 +275,7 @@ const PurePreviewMessage = ({
                  const p = part as any;
                  return (
                     <Tool defaultOpen={true} key={p.toolCallId}>
-                      <ToolHeader state={p.state} type={titleMap[p.type as string]} />
+                      <ToolHeader state={p.state} type={titleMap[p.type as string] as any} />
                       <ToolContent>
                         {('state' in p && p.state === "input-available") && <ToolInput input={(p as any).input} />}
                         {('state' in p && p.state === "output-available") && (
