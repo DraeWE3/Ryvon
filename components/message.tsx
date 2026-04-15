@@ -126,7 +126,7 @@ const PurePreviewMessage = ({
                  // Dynamic detection
                  const toolCall = message.parts?.find(p => p.type?.startsWith('tool-'));
                  if (toolCall) {
-                    const toolType = toolCall.type || '';
+                    const toolType = toolCall.type as string; // Typecast to string to avoid TS literal overlap warning
                     if (toolType === 'tool-createDocument') {
                         const kind = (toolCall as any).args?.kind;
                         if (kind === 'image') thinkingText = "Crafting Vision...";
