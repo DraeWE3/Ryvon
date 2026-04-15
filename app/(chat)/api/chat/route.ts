@@ -284,24 +284,20 @@ export async function POST(request: Request) {
         console.log('[CHAT API] Execute callback started');
         
         // MANUALLY CONSTRUCT CORE MESSAGES FOR GPT-4o
-        const modelMessages = uiMessages.map((msg) => {
-          const { role, content, parts } = msg;
+        const modelMessages = uiMessages.map((msg: any) => {
+          const { role, parts } = msg;
+          const content = msg.content; // may not exist on the type but could be present at runtime
 
           // If there are no specialized parts, return a simple text message
           if (!parts || parts.length === 0) {
             return {
               role: role as 'user' | 'assistant' | 'system',
-              content: typeof content === 'string' ? content : JSON.stringify(content),
+              content: typeof content === 'string' ? content : '',
             };
           }
 
           // For messages with parts (like vision or documents), create a content array
           const contentParts: any[] = [];
-          
-          // Add the original text content if it exists
-          if (content && typeof content === 'string') {
-            contentParts.push({ type: 'text', text: content });
-          }
 
           // Add processed parts (images, tool extractions, etc.)
           parts.forEach((part: any) => {
@@ -316,9 +312,17 @@ export async function POST(request: Request) {
             }
           });
 
+          // Fallback: if no content parts were extracted, use raw content
+          if (contentParts.length === 0 && content) {
+            return {
+              role: role as 'user' | 'assistant' | 'system',
+              content: typeof content === 'string' ? content : JSON.stringify(content),
+            };
+          }
+
           return {
             role: role as 'user' | 'assistant' | 'system',
-            content: contentParts.length > 0 ? contentParts : content,
+            content: contentParts.length > 0 ? contentParts : '',
           };
         });
         
