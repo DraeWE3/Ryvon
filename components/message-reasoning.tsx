@@ -10,11 +10,13 @@ import {
 type MessageReasoningProps = {
   isLoading: boolean;
   reasoning: string;
+  thinkingText?: string;
 };
 
 export function MessageReasoning({
   isLoading,
   reasoning,
+  thinkingText,
 }: MessageReasoningProps) {
   const [hasBeenStreaming, setHasBeenStreaming] = useState(isLoading);
 
@@ -30,7 +32,7 @@ export function MessageReasoning({
       defaultOpen={hasBeenStreaming}
       isStreaming={isLoading}
     >
-      <ReasoningTrigger />
+      <ReasoningTrigger thinkingText={thinkingText} />
       <ReasoningContent>{reasoning}</ReasoningContent>
     </Reasoning>
   );

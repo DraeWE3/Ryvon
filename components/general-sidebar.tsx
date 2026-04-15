@@ -111,10 +111,10 @@ export function GeneralSidebar({ user }: { user: User | undefined }) {
                 <span>Support</span>
               </div>
               {user && (
-                <div className="footer-nav-item" onClick={() => {}}>
+                <Link href="/settings" className="footer-nav-item">
                   <img src="/img-sidebar/account.svg" alt="" className="footer-nav-icon" />
                   <span>Account</span>
-                </div>
+                </Link>
               )}
             </div>
           </div>

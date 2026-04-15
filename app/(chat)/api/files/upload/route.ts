@@ -8,13 +8,21 @@ import { auth } from "@/app/(auth)/auth";
 const FileSchema = z.object({
   file: z
     .instanceof(Blob)
-    .refine((file) => file.size <= 5 * 1024 * 1024, {
-      message: "File size should be less than 5MB",
+    .refine((file) => file.size <= 10 * 1024 * 1024, {
+      message: "File size should be less than 10MB",
     })
-    // Update the file type based on the kind of files you want to accept
-    .refine((file) => ["image/jpeg", "image/png"].includes(file.type), {
-      message: "File type should be JPEG or PNG",
-    }),
+    .refine(
+      (file) =>
+        file.type.startsWith("image/") ||
+        file.type.startsWith("text/") ||
+        file.type === "application/csv" ||
+        file.type === "application/pdf" ||
+        file.type === "application/vnd.ms-excel" || // Some legacy CSVs
+        file.type === "text/csv",
+      {
+        message: "File type not supported. Please upload an image, text, or CSV file.",
+      }
+    ),
 });
 
 export async function POST(request: Request) {

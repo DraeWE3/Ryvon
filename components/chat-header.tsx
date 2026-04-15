@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { memo } from "react";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ function PureChatHeader({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const router = useRouter();
   const { open } = useSidebar();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -42,14 +40,10 @@ function PureChatHeader({
 
       <div className="flex items-center gap-2">
         <div className="right-btncon desktop-only">
-          <div className="btn2 btn cursor-pointer">
+          <Link href="/settings" className="btn2 btn cursor-pointer text-white" prefetch={true}>
             <p>configuration</p>
             <img src="/img/setting.svg" alt="" />
-          </div>
-          <div className="btn2 btn cursor-pointer">
-            <p>Export</p>
-            <img src="/img/export.svg" alt="" />
-          </div>
+          </Link>
         </div>
 
         <div className="mobile-menu-btn" onClick={() => setIsMenuOpen(true)}>
@@ -75,14 +69,10 @@ function PureChatHeader({
           </div>
         </div>
         <div className="menu-items">
-          <div className="btn2 btn cursor-pointer" onClick={() => setIsMenuOpen(false)}>
+          <Link href="/settings" className="btn2 btn cursor-pointer" onClick={() => setIsMenuOpen(false)} prefetch={true}>
             <p>configuration</p>
             <img src="/img/setting.svg" alt="" />
-          </div>
-          <div className="btn2 btn cursor-pointer" onClick={() => setIsMenuOpen(false)}>
-            <p>Export</p>
-            <img src="/img/export.svg" alt="" />
-          </div>
+          </Link>
         </div>
       </div>
     </div>

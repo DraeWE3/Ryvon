@@ -10,6 +10,7 @@ import {
   streamText,
 } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { z } from "zod";
 import { unstable_cache as cache } from "next/cache";
 import { after } from "next/server";
 import {
@@ -28,6 +29,10 @@ import { createDocument } from "@/lib/ai/tools/create-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
+import { initiateCall } from "@/lib/ai/tools/initiate-call";
+import { listAssistants } from "@/lib/ai/tools/list-assistants";
+import { manageWorkflows } from "@/lib/ai/tools/manage-workflows";
+import { checkConnectors } from "@/lib/ai/tools/check-connectors";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
@@ -113,12 +118,16 @@ export function getStreamContext() {
 }
 
 export async function POST(request: Request) {
+  console.log('[CHAT API] POST request received');
   let requestBody: PostRequestBody;
 
   try {
     const json = await request.json();
+    console.log('[CHAT API] Parsed JSON, validating schema...');
     requestBody = postRequestBodySchema.parse(json);
-  } catch (_) {
+    console.log('[CHAT API] Schema validation passed for chat:', json.id);
+  } catch (error) {
+    console.error('[CHAT API] Request validation failed:', error);
     return new ChatSDKError("bad_request:api").toResponse();
   }
 
@@ -173,7 +182,64 @@ export async function POST(request: Request) {
       });
     }
 
-    const uiMessages = [...convertToUIMessages(messagesFromDb), message];
+    // Process attachments to enable vision and text context
+    const processedMessages = await Promise.all([...convertToUIMessages(messagesFromDb), message].map(async (msg) => {
+      if (msg.role !== 'user') return msg;
+      
+      const newParts = await Promise.all(msg.parts.map(async (part: any) => {
+        if (part.type === 'file') {
+          // If it's an image, convert to image part for vision
+          if (part.mediaType.startsWith('image/')) {
+            try {
+              console.log('[CHAT API] Processing image part:', part.name, part.mediaType);
+              const response = await fetch(part.url);
+              const buffer = await response.arrayBuffer();
+              
+              const imagePart = {
+                type: 'image',
+                image: new Uint8Array(buffer),
+                mimeType: part.mediaType,
+              };
+
+              console.log('[CHAT API] Created image part successfully');
+              return imagePart;
+            } catch (error) {
+              console.error('[CHAT API] Failed to fetch image for vision:', error);
+              return part;
+            }
+          }
+          
+          // If it's text/csv, extract content for context
+          const isTextFile = part.mediaType.startsWith('text/') || 
+                            part.mediaType === 'application/csv' || 
+                            part.mediaType === 'text/csv' ||
+                            part.name.endsWith('.csv') ||
+                            part.name.endsWith('.txt');
+
+          if (isTextFile) {
+             try {
+              const response = await fetch(part.url);
+              const content = await response.text();
+              return {
+                type: 'text',
+                text: `\n[FILE ATTACHMENT: ${part.name}]\n--- CONTENT START ---\n${content}\n--- CONTENT END ---\n`,
+              };
+            } catch (error) {
+              console.error('Failed to fetch file for context:', error);
+              return part;
+            }
+          }
+        }
+        return part;
+      }));
+
+      return {
+        ...msg,
+        parts: newParts,
+      };
+    }));
+
+    const uiMessages = processedMessages;
 
     const { longitude, latitude, city, country } = geolocation(request);
 
@@ -184,6 +250,15 @@ export async function POST(request: Request) {
       country,
     };
 
+    // Extract attachments from parts for database persistence
+    const attachments = message.parts
+      .filter((part) => part.type === "file")
+      .map((part) => ({
+        url: part.url,
+        name: part.name,
+        contentType: part.mediaType,
+      }));
+
     await saveMessages({
       messages: [
         {
@@ -191,7 +266,7 @@ export async function POST(request: Request) {
           id: message.id,
           role: "user",
           parts: message.parts,
-          attachments: [],
+          attachments: attachments,
           createdAt: new Date(),
         },
       ],
@@ -202,12 +277,68 @@ export async function POST(request: Request) {
 
     let finalMergedUsage: AppUsage | undefined;
 
+    console.log('[CHAT API] Starting stream with model:', selectedChatModel);
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
+        console.log('[CHAT API] Execute callback started');
+        
+        // MANUALLY CONSTRUCT CORE MESSAGES FOR GPT-4o
+        const modelMessages = uiMessages.map((msg) => {
+          const { role, content, parts } = msg;
+
+          // If there are no specialized parts, return a simple text message
+          if (!parts || parts.length === 0) {
+            return {
+              role: role as 'user' | 'assistant' | 'system',
+              content: typeof content === 'string' ? content : JSON.stringify(content),
+            };
+          }
+
+          // For messages with parts (like vision or documents), create a content array
+          const contentParts: any[] = [];
+          
+          // Add the original text content if it exists
+          if (content && typeof content === 'string') {
+            contentParts.push({ type: 'text', text: content });
+          }
+
+          // Add processed parts (images, tool extractions, etc.)
+          parts.forEach((part: any) => {
+            if (part.type === 'text') {
+              contentParts.push({ type: 'text', text: part.text });
+            } else if (part.type === 'image') {
+              contentParts.push({
+                type: 'image',
+                image: part.image,
+                mimeType: part.mimeType,
+              });
+            }
+          });
+
+          return {
+            role: role as 'user' | 'assistant' | 'system',
+            content: contentParts.length > 0 ? contentParts : content,
+          };
+        });
+        
+        // SAFE DIAGNOSTIC LOGGING
+        try {
+          console.log('[CHAT API] FINAL CORE MESSAGES:');
+          modelMessages.forEach((m, i) => {
+            const partInfo = Array.isArray(m.content) 
+              ? m.content.map(p => `[${p.type}]`).join(', ')
+              : 'simple text';
+            console.log(`  Msg ${i} (${m.role}): ${partInfo}`);
+          });
+        } catch (logError) {
+          console.error('[CHAT API] Logging failed:', logError);
+        }
+
         const result = streamText({
           model: getOpenAIModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
-          messages: convertToModelMessages(uiMessages),
+          messages: modelMessages as any,
           stopWhen: stepCountIs(5),
           experimental_activeTools:
             selectedChatModel === "chat-model-reasoning"
@@ -217,6 +348,10 @@ export async function POST(request: Request) {
                   "createDocument",
                   "updateDocument",
                   "requestSuggestions",
+                  "initiateCall",
+                  "listAssistants",
+                  "manageWorkflows",
+                  "checkConnectors",
                 ],
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: {
@@ -227,12 +362,17 @@ export async function POST(request: Request) {
               session,
               dataStream,
             }),
+            initiateCall: initiateCall({ session }),
+            listAssistants: listAssistants(),
+            manageWorkflows: manageWorkflows({ session }),
+            checkConnectors: checkConnectors({ session }),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: "stream-text",
           },
           onFinish: async ({ usage }) => {
+            console.log('[CHAT API] streamText onFinish fired');
             try {
               const providers = await getTokenlensCatalog();
               const modelId = getOpenAIModel(selectedChatModel).modelId;
@@ -266,8 +406,6 @@ export async function POST(request: Request) {
           },
         });
 
-        result.consumeStream();
-
         dataStream.merge(
           result.toUIMessageStream({
             sendReasoning: true,
@@ -277,14 +415,24 @@ export async function POST(request: Request) {
       generateId: generateUUID,
       onFinish: async ({ messages }) => {
         await saveMessages({
-          messages: messages.map((currentMessage) => ({
-            id: currentMessage.id,
-            role: currentMessage.role,
-            parts: currentMessage.parts,
-            createdAt: new Date(),
-            attachments: [],
-            chatId: id,
-          })),
+          messages: messages.map((currentMessage) => {
+            const attachments = currentMessage.parts
+              .filter((part) => part.type === "file")
+              .map((part) => ({
+                url: part.url,
+                name: part.name,
+                contentType: part.mediaType,
+              }));
+
+            return {
+              id: currentMessage.id,
+              role: currentMessage.role,
+              parts: currentMessage.parts,
+              createdAt: new Date(),
+              attachments: attachments,
+              chatId: id,
+            };
+          }),
         });
 
         if (finalMergedUsage) {
@@ -298,7 +446,8 @@ export async function POST(request: Request) {
           }
         }
       },
-      onError: () => {
+      onError: (error) => {
+        console.error('[CHAT API] Stream error:', error);
         return "Oops, an error occurred!";
       },
     });

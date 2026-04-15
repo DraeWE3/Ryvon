@@ -71,6 +71,45 @@ export async function createUser(email: string, password: string) {
   }
 }
 
+export async function getUserById(id: string): Promise<User | null> {
+  try {
+    const [result] = await db.select().from(user).where(eq(user.id, id));
+    return result || null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+export async function upsertGoogleUser(
+  email: string,
+  name: string | null,
+  image: string | null
+): Promise<User> {
+  try {
+    const existing = await getUser(email);
+    if (existing.length > 0) {
+      // Update name/image from Google if they changed
+      const [updated] = await db
+        .update(user)
+        .set({
+          name: name || existing[0].name,
+          image: image || existing[0].image,
+        })
+        .where(eq(user.email, email))
+        .returning();
+      return updated;
+    }
+    // Create new user without password (OAuth user)
+    const [newUser] = await db
+      .insert(user)
+      .values({ email, name, image })
+      .returning();
+    return newUser;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to upsert Google user");
+  }
+}
+
 export async function createGuestUser() {
   const email = `guest-${Date.now()}`;
   const password = generateHashedPassword(generateUUID());
@@ -1049,5 +1088,39 @@ export async function deleteConnectorAuth({
       "bad_request:database",
       "Failed to delete connector auth"
     );
+  }
+}
+
+export async function updateUserProfile(id: string, data: Partial<User>) {
+  try {
+    await db.update(user).set(data).where(eq(user.id, id));
+  } catch (error) {
+    console.error("Failed to update user profile", error);
+    throw error;
+  }
+}
+
+export async function deleteUserCascade(id: string) {
+  try {
+    // Note: Drizzle subqueries handle the nested lookup
+    const userChats = db.select({ id: chat.id }).from(chat).where(eq(chat.userId, id));
+    
+    // Delete votes safely
+    await db.delete(vote).where(inArray(vote.chatId, userChats));
+    
+    // Delete messages
+    await db.delete(message).where(inArray(message.chatId, userChats));
+    
+    // Delete documents
+    await db.delete(document).where(eq(document.userId, id));
+    
+    // Delete chats
+    await db.delete(chat).where(eq(chat.userId, id));
+    
+    // Delete user
+    await db.delete(user).where(eq(user.id, id));
+  } catch (error) {
+    console.error("Failed to delete user", error);
+    throw error;
   }
 }

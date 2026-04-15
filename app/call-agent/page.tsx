@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTheme } from 'next-themes';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { SidebarToggle } from '@/components/sidebar-toggle';
 import Papa from 'papaparse';
 import { 
@@ -19,8 +20,12 @@ import {
   Clock, 
   Download,
   Trash2,
-  Plus
+  Plus,
+  RefreshCw
 } from 'lucide-react';
+import useSWR, { useSWRConfig } from 'swr';
+import { useSidebar } from '@/components/ui/sidebar';
+import { fetcher } from '@/lib/utils';
 
 interface Contact {
   name: string;
@@ -56,6 +61,7 @@ const DEFAULT_ASSISTANT_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || '50987
 
 export default function AICallAgent() {
   const { theme } = useTheme();
+  const { toggleSidebar } = useSidebar();
   const [mounted, setMounted] = useState(false);
   
   // Single Call State
@@ -86,10 +92,19 @@ export default function AICallAgent() {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // UI State
-  const [activeTab, setActiveTab] = useState<'manual' | 'import' | 'recent'>('manual');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [recentCalls, setRecentCalls] = useState<RecentCallLog[]>([]);
-  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const logIdFromUrl = searchParams?.get('logId');
+  const { mutate: globalMutate } = useSWRConfig();
+
+  // Fetch selected log details if logId is in URL
+  const { data: selectedLogData } = useSWR(
+    logIdFromUrl ? `/api/call/logs/${logIdFromUrl}` : null,
+    fetcher
+  );
+
+  const selectedLog = selectedLogData?.success ? selectedLogData.log : null;
 
   useEffect(() => {
     setMounted(true);
@@ -101,40 +116,10 @@ export default function AICallAgent() {
     };
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'recent') {
-      fetchRecentCalls();
-    }
-  }, [activeTab]);
-
-  const fetchRecentCalls = async () => {
-    setIsLoadingLogs(true);
-    try {
-      const response = await fetch('/api/call/logs');
-      const data = await response.json();
-      if (data.success) {
-        setRecentCalls(data.logs);
-      }
-    } catch (error) {
-      console.error('Failed to fetch recent calls:', error);
-    } finally {
-      setIsLoadingLogs(false);
-    }
-  };
-
-  const handleDeleteLog = async (logId: string) => {
-    try {
-      const response = await fetch(`/api/call/logs/${logId}`, { method: 'DELETE' });
-      const data = await response.json();
-      if (data.success) {
-        setRecentCalls(prev => prev.filter(log => log.id !== logId));
-      } else {
-        setErrorMessage(data.error || 'Failed to delete log');
-      }
-    } catch (error) {
-      console.error('Failed to delete log:', error);
-      setErrorMessage('Failed to delete log');
-    }
+  const closeLogModal = () => {
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    params.delete('logId');
+    router.push(`/call-agent?${params.toString()}`);
   };
 
   const phoneRegions: PhoneRegion[] = [
@@ -558,12 +543,20 @@ export default function AICallAgent() {
           setCallSummary(data.summary || null);
           setCallTranscript(data.transcript || null);
           setIsProcessing(false);
+          
+          // Refresh the main sidebar history
+          globalMutate('/api/call/logs');
+          
           clearInterval(interval);
           pollIntervalRef.current = null;
         } else if (data.status === 'failed' || data.status === 'error') {
           setCallStatus('failed');
           setIsProcessing(false);
           setErrorMessage(data.endedReason ? `Call failed: ${data.endedReason.replace(/-/g, ' ')}` : 'Call failed');
+          
+          // Refresh the main sidebar history even on failure
+          globalMutate('/api/call/logs');
+          
           clearInterval(interval);
           pollIntervalRef.current = null;
         }
@@ -606,58 +599,143 @@ export default function AICallAgent() {
   const currentRegion = phoneRegions.find(r => r.code === selectedRegion);
 
   return (
-    <div className="min-h-screen agent-bg font-motive">
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)}></div>
-      )}
-
-      {/* Mobile Sidebar */}
-      <div
-        id="mobile-sidebar"
-        className={`fixed top-0 right-0 h-full w-64 bg-black/90 backdrop-blur-xl border-l border-white/10 z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${
-          isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div className="p-6">
-          {/* Close Button */}
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Sidebar Content */}
-          <div className="mt-12 space-y-4">
-            <div className="mb-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-full text-sm font-medium text-white">
-                <span>RyvonAI v1.0</span>
-                <div className="w-3 h-3 border-r-2 border-b-2 border-gray-400 transform rotate-45 -mt-1"></div>
+    <div className="min-h-screen agent-bg font-motive flex overflow-hidden">
+      {/* Call Details Modal */}
+      {selectedLog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+            onClick={closeLogModal}
+          />
+          <div className="relative w-full max-w-3xl max-h-[90vh] bg-[#0c1a2b] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in duration-300">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-[#1EA7FF]/20 flex items-center justify-center text-[#1EA7FF]">
+                  <Phone className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white tracking-tight">{selectedLog.phoneNumber}</h3>
+                  <p className="text-xs text-gray-500">
+                    {new Date(selectedLog.createdAt).toLocaleString()} • {selectedLog.status}
+                  </p>
+                </div>
               </div>
+              <button 
+                onClick={closeLogModal}
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
             </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+              {/* Stats Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Status</span>
+                  <span className={`text-sm font-semibold ${selectedLog.status === 'completed' ? 'text-green-500' : 'text-yellow-500'}`}>
+                    {selectedLog.status}
+                  </span>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Duration</span>
+                  <span className="text-sm font-semibold text-white">{selectedLog.duration || 'N/A'}</span>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Region</span>
+                  <span className="text-sm font-semibold text-white">International</span>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Recording</span>
+                  <div className="mt-1">
+                    {selectedLog.recordingUrl ? (
+                      <a 
+                        href={selectedLog.recordingUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[#1EA7FF] hover:underline text-xs flex items-center gap-1"
+                      >
+                        <Play className="w-3 h-3 fill-current" /> Listen
+                      </a>
+                    ) : (
+                      <span className="text-gray-600 text-xs italic">No audio</span>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 rounded-lg transition-all">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="text-sm font-medium">Settings</span>
-            </button>
+              {/* AI Summary */}
+              {selectedLog.summary && (
+                <div className="bg-[#1EA7FF]/5 border border-[#1EA7FF]/10 rounded-2xl p-6 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <FileText className="w-16 h-16 text-[#1EA7FF]" />
+                  </div>
+                  <h4 className="text-sm font-bold text-[#1EA7FF] mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    AI AGENT SUMMARY
+                  </h4>
+                  <p className="text-sm text-gray-300 leading-relaxed relative z-10">
+                    {selectedLog.summary}
+                  </p>
+                </div>
+              )}
 
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 rounded-lg transition-all">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <span className="text-sm font-medium">Export</span>
-            </button>
+              {/* Transcript */}
+              {selectedLog.transcript && (
+                <div className="space-y-4">
+                  <h4 className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                    <MessageSquare className="w-4 h-4" />
+                    Conversation Transcript
+                  </h4>
+                  <div className="bg-black/20 rounded-2xl p-6 border border-white/5 font-mono text-xs leading-relaxed space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+                    {selectedLog.transcript.split('\n').map((line, i) => {
+                      const isUser = line.toLowerCase().startsWith('user:') || line.toLowerCase().startsWith('customer:');
+                      const isAssistant = line.toLowerCase().startsWith('assistant:') || line.toLowerCase().startsWith('ryvon:');
+                      
+                      return (
+                        <div key={i} className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[80%] p-3 rounded-2xl ${
+                            isUser ? 'bg-[#1EA7FF] text-white rounded-tr-none' : 
+                            isAssistant ? 'bg-white/10 text-gray-200 rounded-tl-none border border-white/5' :
+                            'bg-black/40 text-gray-500 italic'
+                          }`}>
+                            {line.replace(/^(User:|Customer:|Assistant:|Ryvon:)\s*/i, '')}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-6 bg-white/5 border-t border-white/10 flex justify-end gap-3">
+              <button 
+                onClick={() => {
+                  const blob = new Blob([selectedLog.transcript || ''], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `transcript_${selectedLog.phoneNumber}.txt`;
+                  a.click();
+                }}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-medium text-white transition-all flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" /> Export Data
+              </button>
+              <button 
+                onClick={closeLogModal}
+                className="px-6 py-2 bg-[#1EA7FF] hover:bg-[#3FD2FF] rounded-xl text-xs font-bold text-white transition-all shadow-lg shadow-[#1EA7FF]/20"
+              >
+                Close View
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="min-h-screen flex flex-col p-4 sm:p-5 lg:p-6">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto flex flex-col p-4 sm:p-5 lg:p-6 custom-scrollbar">
         <div className="max-w-6xl w-full mx-auto">
           {/* Top Bar */}
           <div className="flex justify-between items-center mb-8 sm:mb-10 gap-4">
@@ -689,7 +767,7 @@ export default function AICallAgent() {
             {/* Mobile Menu Button */}
             <button
               id="mobile-menu-button"
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => toggleSidebar()}
               className="lg:hidden inline-flex items-center justify-center w-10 h-10 bg-black/30 backdrop-blur-xl border border-white/10 rounded-full text-white hover:border-[#1EA7FF] hover:shadow-[0_0_20px_rgba(30,167,255,0.3)] transition-all duration-250"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -903,16 +981,6 @@ export default function AICallAgent() {
                   }`}
                 >
                   Import List
-                </button>
-                <button
-                  onClick={() => setActiveTab('recent')}
-                  className={`px-6 py-2.5 rounded-[5rem] text-sm font-medium transition-all duration-250 ${
-                    activeTab === 'recent'
-                      ? 'bg-gradient-to-br from-[#1EA7FF] to-[#3FD2FF] text-white shadow-[0_4px_12px_rgba(30,167,255,0.3)]'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  Recent Contacts
                 </button>
               </div>
 
@@ -1286,98 +1354,7 @@ export default function AICallAgent() {
                 </div>
               )}
 
-              {activeTab === 'recent' && (
-                <div className="mt-6">
-                  {isLoadingLogs ? (
-                    <div className="py-20 text-center">
-                      <div className="w-10 h-10 border-2 border-[#1EA7FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-gray-400 text-sm">Loading recent calls...</p>
-                    </div>
-                  ) : recentCalls.length === 0 ? (
-                    <div className="py-20 text-center">
-                      <Clock className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                      <p className="text-gray-400 text-sm">Your recent call history will appear here</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {recentCalls.map((log) => (
-                        <div 
-                          key={log.id} 
-                          className="bg-black/40 border border-white/10 rounded-2xl p-5 hover:border-[#1EA7FF]/30 transition-all group"
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#1EA7FF]">
-                                <Phone className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <h4 className="text-white font-medium">{log.phoneNumber}</h4>
-                                <p className="text-xs text-gray-500">
-                                  {new Date(log.createdAt).toLocaleString()} • {log.status}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-3">
-                              {log.summary && (
-                                <button 
-                                  onClick={() => {
-                                    const blob = new Blob([log.summary || ''], { type: 'text/plain' });
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = `summary_${log.phoneNumber}_${log.id.slice(0, 8)}.txt`;
-                                    a.click();
-                                  }}
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs text-gray-300 transition-colors"
-                                >
-                                  <FileText className="w-3.5 h-3.5" />
-                                  Summary
-                                </button>
-                              )}
-                              {log.recordingUrl && (
-                                <a 
-                                  href={log.recordingUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs text-gray-300 transition-colors"
-                                >
-                                  <Play className="w-3.5 h-3.5" />
-                                  Recording
-                                </a>
-                              )}
-                              <button 
-                                onClick={() => handleDeleteLog(log.id)}
-                                className="p-2 text-gray-600 hover:text-red-500 transition-colors"
-                                title="Delete Log"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {(log.transcript || log.summary) && (
-                            <div className="mt-4 pt-4 border-t border-white/5 hidden group-hover:block transition-all">
-                              {log.summary && (
-                                <div className="mb-3">
-                                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Summary</span>
-                                  <p className="text-xs text-gray-400 line-clamp-2">{log.summary}</p>
-                                </div>
-                              )}
-                              {log.transcript && (
-                                <div>
-                                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Latest Transcript</span>
-                                  <p className="text-[10px] text-gray-600 italic line-clamp-1">"{log.transcript.slice(-100)}..."</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Recent History Tab Removed (Moved to Sidebar) */}
             </section>
           </div>
         </div>

@@ -160,8 +160,57 @@
   }
 }
 
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility text-balance {
   text-wrap: balance;
+}
+
+@keyframes wand-shake {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg) scale(1.1); }
+  50% { transform: rotate(10deg) scale(1.1); }
+  75% { transform: rotate(-10deg) scale(1.1); }
+  100% { transform: rotate(0deg); }
+}
+
+@utility wander-shake {
+  &:hover img {
+    animation: wand-shake 0.4s ease-in-out;
+  }
+}
+
+@utility gradient-border-stop {
+  position: relative;
+  background: black;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    background: linear-gradient(to right, #8CDFF4, #3071E1);
+    border-radius: inherit;
+  }
+}
+
+@keyframes pulse-blue {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(48, 113, 225, 0.7); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(48, 113, 225, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(48, 113, 225, 0); }
+}
+
+@utility animate-pulse-blue {
+  animation: pulse-blue 2s infinite;
 }
 
 @utility -webkit-overflow-scrolling-touch {
@@ -815,11 +864,15 @@
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: start;
+  justify-content: center;
   flex-direction: column;
   overflow-y: auto;
   scrollbar-width: none;
   position: relative;
+}
+
+.chat-section.active-chat{
+  justify-content: flex-start;
 }
 
 .chat-section2{
@@ -832,7 +885,7 @@
   justify-content: center;
   flex-direction: column;
   margin-bottom: 5%;
-  margin-top: 10%;
+  margin-top: 0;
   
 }
 
@@ -871,7 +924,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 100%;
+  justify-content: center;
 }
 
 .buttons{
@@ -897,6 +950,12 @@
   display: none;
 }
 
+@media(max-width: 1400px){
+  .messages-container{
+    height: 55vh;
+  }
+}
+
 .canvas-preview {
  border-radius: 1rem;
  overflow: hidden;
@@ -919,8 +978,9 @@
 
 /* User asked for chatinput height 20vh, preserved here */
 .chatinput{
- height: 20vh;
- min-height: 190px; /* Increased min-height */
+  min-height: 20vh;
+  height: auto;
+  min-height: 190px; /* Increased min-height */
 /* ... rest of properties ... */
  border-radius: 1rem;
  overflow: hidden;
@@ -1013,7 +1073,7 @@
 }
 
 .input-actions .left .selection{
-    display: flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
@@ -1021,10 +1081,17 @@
   border-right: 1px solid #ffffff53;
   padding-right: 1rem;
   height: 1.3rem;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
+}
+
+.input-actions .left .selection:hover {
+  transform: scale(1.05);
+  filter: brightness(1.2);
 }
 
 .input-actions .left .selection img{
   width: 0.9rem;
+  transition: transform 0.2s ease;
 }
 
 .input-actions .left .selection p{
@@ -1995,6 +2062,73 @@ body:has([data-state="open"]) .sidebar-toggle-external {
     transform: translateY(-2px);
 }
 
+.google-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 24px;
+    margin-top: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #e0e8f0;
+    font-family: motive-reg;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    letter-spacing: 0.2px;
+}
+
+.google-btn:hover {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 16px rgba(66, 133, 244, 0.15);
+    transform: translateY(-1px);
+}
+
+.google-btn:active {
+    transform: translateY(0);
+}
+
+.google-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.google-btn svg {
+    flex-shrink: 0;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 20px 0 8px;
+    width: 100%;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+}
+
+.auth-divider span {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.35);
+    font-family: motive-reg;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 .auth-footer {
     width: 100%;
     text-align: center;
@@ -2147,4 +2281,77 @@ body:has([data-state="open"]) .sidebar-toggle-external {
   background: rgba(0, 98, 255, 0.2) !important;
   border-color: rgba(0, 98, 255, 0.8) !important;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 15px rgba(0, 98, 255, 0.5) !important;
+}
+
+/* Settings Page */
+.settings-bg {
+  background-image: url('/images/settings-bg.webp');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+  scrollbar-width: none;
+}
+
+.settings-bg::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-glass-card {
+  background: rgba(8, 14, 25, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 128, 255, 0.2);
+  border-top: 1px solid rgba(0, 128, 255, 0.4);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s ease;
+}
+
+.settings-form-input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  transition: border-color 0.2s ease;
+}
+
+.settings-form-input:focus {
+  outline: none;
+  border-color: rgba(0, 128, 255, 0.8);
+  box-shadow: 0 0 0 2px rgba(0, 128, 255, 0.2);
+}
+
+.settings-tab {
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0.5rem 1.5rem;
+  border-radius: 6px;
+  font-family: 'motive-reg', sans-serif;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.settings-tab:hover {
+  color: white;
+}
+
+.settings-tab.active {
+  background: linear-gradient(90deg, rgba(0, 128, 255, 0.3) 0%, rgba(0, 128, 255, 0.05) 100%);
+  color: white;
+  border-left: 2px solid #0080FF;
+}
+
+@media(max-width: 768px) {
+  .settings-tab.active {
+    border-left: none;
+    border-bottom: 2px solid #0080FF;
+  }
 }

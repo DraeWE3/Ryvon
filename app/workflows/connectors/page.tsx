@@ -7,6 +7,85 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { X } from 'lucide-react'
 
+// Map connector ID -> Simple Icons slug (see https://simpleicons.org)
+const ICON_SLUGS: Record<string, string> = {
+  google: 'gmail',
+  slack: 'slack',
+  'microsoft-teams': 'microsoftteams',
+  discord: 'discord',
+  twilio: 'twilio',
+  whatsapp: 'whatsapp',
+  sendgrid: 'sendgrid',
+  'google-calendar': 'googlecalendar',
+  'google-sheets': 'googlesheets',
+  notion: 'notion',
+  airtable: 'airtable',
+  trello: 'trello',
+  asana: 'asana',
+  jira: 'jira',
+  'google-drive': 'googledrive',
+  dropbox: 'dropbox',
+  'microsoft-365': 'microsoftoutlook',
+  hubspot: 'hubspot',
+  salesforce: 'salesforce',
+  pipedrive: 'pipedrive',
+  'zoho-crm': 'zoho',
+  stripe: 'stripe',
+  paypal: 'paypal',
+  zendesk: 'zendesk',
+  intercom: 'intercom',
+  freshdesk: 'freshdesk',
+  crisp: 'crisp',
+  mailchimp: 'mailchimp',
+  twitter: 'x',
+  linkedin: 'linkedin',
+  meta: 'meta',
+  wordpress: 'wordpress',
+  webflow: 'webflow',
+  'google-analytics': 'googleanalytics',
+  http: 'curl',
+  github: 'github',
+  gitlab: 'gitlab',
+  aws: 'amazonaws',
+  supabase: 'supabase',
+  firebase: 'firebase',
+  postgresql: 'postgresql',
+  ai: 'openai',
+  openai: 'openai',
+  elevenlabs: 'elevenlabs',
+  replicate: 'replicate',
+  shopify: 'shopify',
+  woocommerce: 'woocommerce',
+  gumroad: 'gumroad',
+}
+
+function ConnectorIcon({ id, name }: { id: string; name: string }) {
+  const slug = ICON_SLUGS[id]
+  const [errored, setErrored] = React.useState(false)
+
+  if (!slug || errored) {
+    // Fallback: coloured initials badge
+    return (
+      <div className="w-9 h-9 rounded-[8px] bg-[rgba(140,223,244,0.12)] border border-[rgba(140,223,244,0.15)] flex items-center justify-center flex-shrink-0">
+        <span className="font-motive text-[12px] font-semibold text-[#8cdff4] uppercase leading-none">
+          {name.slice(0, 2)}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-9 h-9 rounded-[8px] bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0 p-[7px]">
+      <img
+        src={`https://cdn.simpleicons.org/${slug}/ffffff`}
+        alt={name}
+        className="w-full h-full object-contain"
+        onError={() => setErrored(true)}
+      />
+    </div>
+  )
+}
+
 interface Connector {
   id: string
   name: string
@@ -138,7 +217,7 @@ export default function ConnectorsPage() {
               {/* Header */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-[24px]">{connector.icon}</span>
+                  <ConnectorIcon id={connector.id} name={connector.name} />
                   <div>
                     <h3 className="font-gate text-[15px] text-[#ffffff] font-medium m-0">
                       {connector.name}
@@ -250,7 +329,7 @@ export default function ConnectorsPage() {
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-[rgba(255,255,255,0.05)]">
               <div className="flex items-center gap-3">
-                <span className="text-[24px]">{addingKeyFor.icon}</span>
+                <ConnectorIcon id={addingKeyFor.id} name={addingKeyFor.name} />
                 <h2 className="font-gate text-[18px] text-white">Connect {addingKeyFor.name}</h2>
               </div>
               <button

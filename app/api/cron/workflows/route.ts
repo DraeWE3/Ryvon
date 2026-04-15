@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
 
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    console.error('[CRON] Unauthorized access attempt')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -66,12 +67,21 @@ export async function GET(request: NextRequest) {
     })
 
     const triggered: string[] = []
+    
+    // Determine the base URL for triggering executions
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
+    const host = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'localhost:3000'
+    const baseUrl = host.startsWith('http') ? host : `${protocol}://${host.replace(/\/$/, '')}`
+
+    console.log(`[CRON] ${new Date().toISOString()} - Checking ${cronWorkflows.length} active cron workflows. BaseURL: ${baseUrl}`)
 
     for (const wf of cronWorkflows) {
       const cronExpr = wf.triggerValue
       if (!cronExpr || cronExpr === 'manual') continue
 
       if (shouldCronRunNow(cronExpr)) {
+        console.log(`[CRON] Match found! Triggering: ${wf.id} (${wf.name})`)
+        
         // Create a new run for this workflow
         const run = await createRun({
           workflowId: wf.id,
@@ -81,20 +91,13 @@ export async function GET(request: NextRequest) {
         triggered.push(wf.id)
 
         // Fire-and-forget: call the SSE stream endpoint to execute the run
-        // In production you'd use a queue, but this triggers execution
-        const baseUrl =
-          process.env.NEXTAUTH_URL ||
-          process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : 'http://localhost:3000'
-
         fetch(`${baseUrl}/api/runs/${run.id}/stream`, {
           method: 'GET',
           headers: {
             Cookie: request.headers.get('cookie') || '',
           },
         }).catch((err) => {
-          console.error(`Failed to trigger run execution for ${run.id}:`, err)
+          console.error(`[CRON] Failed to trigger run execution for ${run.id}:`, err)
         })
       }
     }

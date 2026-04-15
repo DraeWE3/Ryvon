@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { Attachment } from "@/lib/types";
 import { Loader } from "./elements/loader";
-import { CrossSmallIcon } from "./icons";
+import { CrossIcon, FileIcon } from "./icons";
 import { Button } from "./ui/button";
 
 export const PreviewAttachment = ({
@@ -17,44 +17,44 @@ export const PreviewAttachment = ({
 
   return (
     <div
-      className="group relative size-16 overflow-hidden rounded-lg border bg-muted"
+      className="group relative size-20 overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md transition-all hover:bg-white/10"
       data-testid="input-attachment-preview"
     >
       {contentType?.startsWith("image") ? (
         <Image
           alt={name ?? "An image attachment"}
           className="size-full object-cover"
-          height={64}
+          height={80}
           src={url}
-          width={64}
+          width={80}
         />
       ) : (
-        <div className="flex size-full items-center justify-center text-muted-foreground text-xs">
-          File
+        <div className="flex size-full flex-col items-center justify-center gap-1 text-white/50">
+          <FileIcon size={24} />
+          <span className="text-[10px] uppercase font-bold tracking-wider">File</span>
         </div>
       )}
 
       {isUploading && (
         <div
-          className="absolute inset-0 flex items-center justify-center bg-black/50"
+          className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           data-testid="input-attachment-loader"
         >
-          <Loader size={16} />
+          <Loader size={20} />
         </div>
       )}
 
       {onRemove && !isUploading && (
-        <Button
-          className="absolute top-0.5 right-0.5 size-4 rounded-full p-0 opacity-0 transition-opacity group-hover:opacity-100"
+        <button
+          className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity hover:bg-black/80 group-hover:opacity-100"
           onClick={onRemove}
-          size="sm"
-          variant="destructive"
+          type="button"
         >
-          <CrossSmallIcon size={8} />
-        </Button>
+          <CrossIcon size={10} />
+        </button>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/80 to-transparent px-1 py-0.5 text-[10px] text-white">
+      <div className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/90 to-transparent px-2 py-1 text-[10px] font-medium text-white/90">
         {name}
       </div>
     </div>

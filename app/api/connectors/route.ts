@@ -27,7 +27,7 @@ const CONNECTOR_CATALOG = [
 
   // ─── Sales & CRM (6) ───
   { id: 'hubspot', name: 'HubSpot', icon: '🟧', description: 'Contacts, deals, pipelines, and marketing automation.', category: 'Sales & CRM', actions: ['Create contact', 'Update deal', 'Log activity', 'Send email'], oauthSupported: true, apiUrl: 'https://developers.hubspot.com/get-started' },
-
+  { id: 'salesforce', name: 'Salesforce', icon: '☁️', description: 'Leads, opportunities, accounts, and reporting.', category: 'Sales & CRM', actions: ['Create lead', 'Update opportunity', 'Run report'], oauthSupported: true, apiUrl: 'https://developer.salesforce.com/docs/apis' },
   { id: 'pipedrive', name: 'Pipedrive', icon: '🟢', description: 'Deal tracking and contact management.', category: 'Sales & CRM', actions: ['Create deal', 'Update contact', 'Move stage'], oauthSupported: true, apiUrl: 'https://developers.pipedrive.com/docs/api/v1' },
   { id: 'zoho-crm', name: 'Zoho CRM', icon: '🔴', description: 'Leads, contacts, workflows, and analytics.', category: 'Sales & CRM', actions: ['Create lead', 'Update contact', 'Run workflow'], oauthSupported: true, apiUrl: 'https://accounts.zoho.com/developerconsole' },
   { id: 'stripe', name: 'Stripe', icon: '💳', description: 'Payments, invoices, subscriptions, and billing.', category: 'Sales & CRM', actions: ['Create invoice', 'Check payment', 'Manage subscription'], oauthSupported: true, apiUrl: 'https://dashboard.stripe.com/apikeys' },

@@ -12,10 +12,15 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnPublicPage = nextUrl.pathname.startsWith("/login") || nextUrl.pathname.startsWith("/register");
+      const isOnPublicPage =
+        nextUrl.pathname.startsWith("/login") ||
+        nextUrl.pathname.startsWith("/register") ||
+        nextUrl.pathname.startsWith("/api/auth");
 
       if (isOnPublicPage) {
-        if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
+        if (isLoggedIn && (nextUrl.pathname.startsWith("/login") || nextUrl.pathname.startsWith("/register"))) {
+          return Response.redirect(new URL("/", nextUrl));
+        }
         return true;
       }
 
@@ -23,3 +28,4 @@ export const authConfig = {
     },
   },
 } satisfies NextAuthConfig;
+

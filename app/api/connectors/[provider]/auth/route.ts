@@ -41,7 +41,9 @@ export async function GET(
     )
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  // Sanitize base URL — strips trailing slash to prevent double-slash in redirectUri
+  const rawUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const baseUrl = rawUrl.replace(/\/$/, '')
   const redirectUri = `${baseUrl}/api/connectors/${provider}/callback`
 
   // Build state with user ID for the callback

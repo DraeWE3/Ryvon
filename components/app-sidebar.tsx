@@ -15,6 +15,7 @@ import {
   getChatHistoryPaginationKey,
   SidebarHistory,
 } from "@/components/sidebar-history";
+import { SidebarCallHistory } from "@/components/sidebar-call-history";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";
 import { Button } from "@/components/ui/button";
 import {
@@ -126,6 +127,11 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               <div className="flex-1 mt-4 border-t border-[rgba(255,255,255,0.06)] pt-2 overflow-hidden flex flex-col h-full">
                 <WorkflowSidebarList userId={user?.id} />
               </div>
+            ) : pathname === "/call-agent" ? (
+              <div className="recent-activity-section">
+                <h3 className="sidebar-section-label">Call History</h3>
+                <SidebarCallHistory user={user} />
+              </div>
             ) : (
               <div className="recent-activity-section">
                 <h3 className="sidebar-section-label">Recent Activity</h3>
@@ -145,10 +151,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <span>Support</span>
               </div>
               {user && (
-                <div className="footer-nav-item" onClick={() => {}}>
+                <Link href="/settings" className="footer-nav-item">
                   <img src="/img-sidebar/account.svg" alt="" className="footer-nav-icon" />
                   <span>Account</span>
-                </div>
+                </Link>
               )}
             </div>
           </div>

@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
@@ -45,6 +46,7 @@ import { PreviewAttachment } from "./preview-attachment";
 import { SuggestedActions } from "./suggested-actions";
 import { Button } from "./ui/button";
 import type { VisibilityType } from "./visibility-selector";
+import { useSpeechToText } from "@/hooks/use-speech-to-text";
 
 function PureMultimodalInput({
   chatId,
@@ -83,10 +85,22 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const { isListening, transcript, toggle } = useSpeechToText();
+
+  // Update input text as user speaks
+  useEffect(() => {
+    if (transcript) {
+      setInput((prev) => {
+        const base = prev.trim();
+        return base ? `${base} ${transcript}` : transcript;
+      });
+    }
+  }, [transcript, setInput]);
 
   const adjustHeight = useCallback(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "44px";
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
     }
   }, []);
 
@@ -299,11 +313,13 @@ function PureMultimodalInput({
         ref={fileInputRef}
         tabIndex={-1}
         type="file"
+        id="chat-file-upload"
       />
 
+      {/* Attachment Preview Section */}
       {(attachments.length > 0 || uploadQueue.length > 0) && (
         <div
-          className="absolute top-[-80px] left-0 w-full flex flex-row items-end gap-2 overflow-x-scroll px-4 pb-2"
+          className="flex flex-row items-end gap-2 overflow-x-auto w-full px-4 pt-4 pb-2 scrollbar-hide"
           data-testid="attachments-preview"
         >
           {attachments.map((attachment) => (
@@ -337,7 +353,7 @@ function PureMultimodalInput({
 
       <textarea
         autoFocus
-        className="w-[90%] h-full p-[19px_16px_12px_45px] text-base leading-6 text-white bg-transparent border-none outline-none resize-none overflow-y-auto placeholder:text-gray-500 font-sans focus:font-light"
+        className="w-[90%] flex-1 min-h-[44px] p-[19px_16px_12px_45px] text-base leading-6 text-white bg-transparent border-none outline-none resize-none overflow-y-auto placeholder:text-gray-500 font-sans focus:font-light"
         onChange={handleInput}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey) {
@@ -356,46 +372,64 @@ function PureMultimodalInput({
       <div className="input-actions">
         {!isArtifactVisible && (
           <div className="left">
-            <div
+            <label
               className="selection cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
+              htmlFor="chat-file-upload"
             >
               <img src="/img/att.svg" alt="" />
               <p>Attach</p>
-            </div>
-            <div className="selection cursor-pointer">
+            </label>
+            <Link href="/settings" className="selection cursor-pointer relative" prefetch={true}>
               <img src="/img/set.svg" alt="" />
               <p>Settings</p>
-               <div className="opacity-0 absolute w-full h-full"> 
-                  {/* Hidden model selector to keep functionality accessible if needed */}
-                  <ModelSelectorCompact
-                    onModelChange={onModelChange}
-                    selectedModelId={selectedModelId}
-                  />
-              </div>
-            </div>
-            <div className="selection cursor-pointer">
-              <img src="/img/opt.svg" alt="" />
-              <p>Options</p>
+            </Link>
+            <div className="selection cursor-pointer relative">
+              <ModelSelectorCompact
+                onModelChange={onModelChange}
+                selectedModelId={selectedModelId}
+              />
             </div>
           </div>
         )}
         <div className="right" style={{ marginLeft: isArtifactVisible ? "auto" : undefined }}>
           {!isArtifactVisible && (
-            <div className="mic-btn cursor-pointer">
-              <img src="/img/mic.svg" alt="" />
+            <div 
+              className={cn(
+                "mic-btn cursor-pointer rounded-full p-1.5 transition-all flex items-center justify-center",
+                isListening && "bg-blue-500/10 animate-pulse-blue"
+              )}
+              onClick={toggle}
+              title={isListening ? "Stop Recording" : "Start Voice Input"}
+            >
+              <img 
+                src="/img/mic.svg" 
+                alt="" 
+                className={cn("w-5 h-5", isListening && "brightness-150")} 
+              />
             </div>
           )}
-          <div
-            className="generate-btn cursor-pointer"
-            onClick={() => {
-              if (status !== "ready") return;
-              submitForm();
-            }}
-          >
-            <p>Generate</p>
-            <img src="/img/generate.svg" alt="" />
-          </div>
+          {status === "streaming" || status === "submitted" ? (
+            <div
+              className="flex size-8 items-center justify-center gradient-border-stop cursor-pointer transition-all active:scale-95"
+              onClick={(e) => {
+                e.preventDefault();
+                stop();
+              }}
+            >
+              <StopIcon size={12} style={{ color: "#FF3333" }} />
+            </div>
+          ) : (
+            <div
+              className="generate-btn cursor-pointer wander-shake"
+              onClick={() => {
+                if (status !== "ready") return;
+                submitForm();
+              }}
+            >
+              <p>Generate</p>
+              <img src="/img/generate.svg" alt="" />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -489,22 +523,20 @@ function PureModelSelectorCompact({
       value={selectedModel?.name}
     >
       <Trigger asChild>
-        <Button className="h-8 px-2" variant="ghost">
-          <CpuIcon size={16} />
-          <span className="hidden font-medium text-xs sm:block">
-            {selectedModel?.name}
-          </span>
-          <ChevronDownIcon size={16} />
-        </Button>
+        <div className="flex items-center gap-1.5 cursor-pointer">
+          <img src="/img/opt.svg" alt="" className="w-4 h-4" />
+          <p className="text-sm">Options</p>
+        </div>
       </Trigger>
-      <PromptInputModelSelectContent className="min-w-[260px] p-0">
-        <div className="flex flex-col gap-px">
+      <PromptInputModelSelectContent className="bg-black/90 border-[#32A2F2] border-opacity-50 backdrop-blur-xl text-white min-w-[200px] rounded-xl shadow-[0_0_15px_rgba(50,162,242,0.3)]">
+        <div className="flex flex-col py-1">
           {chatModels.map((model) => (
-            <SelectItem key={model.id} value={model.name}>
-              <div className="truncate font-medium text-xs">{model.name}</div>
-              <div className="mt-px truncate text-[10px] text-muted-foreground leading-tight">
-                {model.description}
-              </div>
+            <SelectItem 
+              key={model.id} 
+              value={model.name}
+              className="cursor-pointer py-2 focus:bg-white/10 focus:text-white transition-colors"
+            >
+              <div className="font-medium text-xs">{model.name}</div>
             </SelectItem>
           ))}
         </div>
