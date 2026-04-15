@@ -255,7 +255,7 @@ export async function POST(request: Request) {
       .filter((part) => part.type === "file")
       .map((part) => ({
         url: part.url,
-        name: part.name,
+        name: (part as any).name ?? 'attachment',
         contentType: part.mediaType,
       }));
 
@@ -420,7 +420,7 @@ export async function POST(request: Request) {
               .filter((part) => part.type === "file")
               .map((part) => ({
                 url: part.url,
-                name: part.name,
+                name: (part as any).name ?? 'attachment',
                 contentType: part.mediaType,
               }));
 

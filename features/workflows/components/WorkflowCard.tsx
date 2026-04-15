@@ -16,7 +16,6 @@ import {
 import type { Workflow } from "../types/workflow";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 
 interface WorkflowCardProps {
   workflow: Workflow | any;
@@ -104,19 +103,9 @@ export function WorkflowCard({ workflow, onToggle, onRun, isTemplate, onUseTempl
           </button>
         ) : (
           <>
-            <Link 
-              href={`/workflows/${workflow.id}`}
-              className="flex-1"
-            >
-              <button
-                className="w-full py-2 px-4 rounded-[12px] font-gate text-[12px] text-[rgba(255,255,255,0.6)] hover:text-white transition-all bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.1)] flex items-center justify-center"
-              >
-                Open Workflow
-              </button>
-            </Link>
             <button
               onClick={() => onRun?.(workflow.id)}
-              className="flex-1 py-2 px-4 rounded-[12px] font-gate text-[12px] font-bold text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5"
+              className="w-full py-2 px-4 rounded-[12px] font-gate text-[12px] font-bold text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5"
               style={{
                 background: "linear-gradient(180deg, #A8CEE5 0%, #007DC0 50%, #001C3C 100%)",
                 boxShadow: "0 4px 15px rgba(0, 125, 192, 0.3)"
