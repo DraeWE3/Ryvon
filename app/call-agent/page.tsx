@@ -688,7 +688,7 @@ export default function AICallAgent() {
                     Conversation Transcript
                   </h4>
                   <div className="bg-black/20 rounded-2xl p-6 border border-white/5 font-mono text-xs leading-relaxed space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-                    {selectedLog.transcript.split('\n').map((line, i) => {
+                    {selectedLog.transcript.split('\n').map((line: string, i: number) => {
                       const isUser = line.toLowerCase().startsWith('user:') || line.toLowerCase().startsWith('customer:');
                       const isAssistant = line.toLowerCase().startsWith('assistant:') || line.toLowerCase().startsWith('ryvon:');
                       
