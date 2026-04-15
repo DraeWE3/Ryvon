@@ -229,7 +229,7 @@ const PurePreviewMessage = ({
                   }
              }
 
-             if (part.type === "tool-listAssistants") {
+             if ((part.type as string) === "tool-listAssistants") {
                  return (
                     <Tool defaultOpen={true} key={part.toolCallId}>
                       <ToolHeader state={part.state} type="Agent Gallery" />
@@ -265,7 +265,7 @@ const PurePreviewMessage = ({
                  );
              }
 
-             if (["tool-initiateCall", "tool-manageWorkflows", "tool-checkConnectors"].includes(part.type)) {
+             if (["tool-initiateCall", "tool-manageWorkflows", "tool-checkConnectors"].includes(part.type as string)) {
                  const titleMap: Record<string, string> = {
                    "tool-initiateCall": "Voice Orchestration",
                    "tool-manageWorkflows": "Workflow Orchestration",
@@ -273,7 +273,7 @@ const PurePreviewMessage = ({
                  };
                  return (
                     <Tool defaultOpen={true} key={part.toolCallId}>
-                      <ToolHeader state={part.state} type={titleMap[part.type]} />
+                      <ToolHeader state={part.state} type={titleMap[part.type as string]} />
                       <ToolContent>
                         {('state' in part && part.state === "input-available") && <ToolInput input={(part as any).input} />}
                         {('state' in part && part.state === "output-available") && (
