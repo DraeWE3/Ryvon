@@ -32,9 +32,7 @@ const PureCallHistoryItem = ({
 
   const handleClick = () => {
     setOpenMobile(false);
-    const params = new URLSearchParams(searchParams?.toString() || "");
-    params.set("logId", log.id);
-    router.push(`/call-agent?${params.toString()}`);
+    router.push(`/call-agent?logId=${log.id}`);
   };
 
   return (

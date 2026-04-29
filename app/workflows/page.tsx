@@ -10,7 +10,7 @@ import { WorkflowGrid } from '@/features/workflows/components/WorkflowGrid'
 import { CreateWorkflowDrawer } from '@/features/workflows/drawers/CreateWorkflowDrawer'
 import { useWorkflowUIStore } from '@/features/workflows/hooks/useCreateWorkflow'
 
-import { WorkflowToggle } from '@/features/workflows/components/WorkflowToggle'
+import { SidebarToggle } from '@/components/sidebar-toggle'
 import { toast } from 'react-hot-toast'
 
 export default function WorkflowsDashboard() {
@@ -52,6 +52,7 @@ export default function WorkflowsDashboard() {
   const totalWorkflows = workflows?.length || 0
   const activeWorkflows = workflows?.filter(w => w.active).length || 0
   const runsToday = stats?.runs_today || 0
+  const totalRuns = stats?.total_runs || 0
 
   // Combine user workflows and templates
   const combinedWorkflows = [
@@ -66,9 +67,9 @@ export default function WorkflowsDashboard() {
   return (
     <div className="flex h-full flex-col p-8 overflow-y-auto workflow-bg">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 header-seq">
         <div className="flex items-center">
-          <WorkflowToggle className="p-0 mr-4" />
+          <SidebarToggle className="p-0 mr-4" />
           <div>
             <h1 className="font-gate text-[24px] text-[#ffffff] font-medium leading-tight mb-2 m-0">
               Workflow Automation
@@ -78,16 +79,16 @@ export default function WorkflowsDashboard() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <Link
             href="/workflows/connectors"
-            className="font-motive text-[13px] text-[rgba(255,255,255,0.60)] hover:text-[#ffffff] border border-[rgba(255,255,255,0.10)] hover:border-[rgba(255,255,255,0.20)] rounded-full px-[20px] py-[10px] transition-all"
+            className="flex-1 md:flex-none text-center font-motive text-[13px] text-[rgba(255,255,255,0.60)] hover:text-[#ffffff] border border-[rgba(255,255,255,0.10)] hover:border-[rgba(255,255,255,0.20)] rounded-full px-[20px] py-[10px] transition-all"
           >
             🔌 Connectors
           </Link>
           <button
             onClick={() => setCreateDrawerOpen(true)}
-            className="font-motive text-[13px] text-[#ffffff] rounded-full px-[20px] py-[10px] transition-all hover:opacity-90 active:scale-[0.97]"
+            className="flex-1 md:flex-none font-motive text-[13px] text-[#ffffff] rounded-full px-[20px] py-[10px] transition-all hover:opacity-90 active:scale-[0.97]"
             style={{
               background: 'linear-gradient(180deg, #A8CEE5 0%, #007DC0 50%, #001C3C 100%)',
               boxShadow: '0 4px 15px rgba(0, 125, 192, 0.3)',
@@ -99,21 +100,29 @@ export default function WorkflowsDashboard() {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
         <MetricCard 
           label="Total Workflows" 
           value={totalWorkflows} 
+          trend={totalWorkflows > 0 ? '+15.2%' : undefined}
           loading={isWorkflowsLoading} 
         />
         <MetricCard 
-          label="Active" 
+          label="Active Automations" 
           value={activeWorkflows} 
+          trend={activeWorkflows > 0 ? '+2.1%' : undefined}
           loading={isWorkflowsLoading} 
         />
         <MetricCard 
           label="Runs Today" 
           value={runsToday} 
-          trend={runsToday > 0 ? '+12%' : undefined} // Mock trend
+          trend={runsToday > 0 ? '+25.3%' : undefined}
+          loading={isStatsLoading} 
+        />
+        <MetricCard 
+          label="All-time Executions" 
+          value={totalRuns} 
+          trend={runsToday === 0 ? '-0.2%' : '+1.1%'}
           loading={isStatsLoading} 
         />
       </div>

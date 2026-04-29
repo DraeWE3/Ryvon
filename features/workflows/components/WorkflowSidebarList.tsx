@@ -25,12 +25,6 @@ export function WorkflowSidebarList({ userId = 'temp-user-id' }: WorkflowSidebar
       {/* Header Row */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(255,255,255,0.06)] shrink-0">
         <h2 className="font-gate text-[15px] text-[#ffffff] font-medium m-0">Workflows</h2>
-        <button
-          onClick={() => setCreateDrawerOpen(true)}
-          className="font-motive text-[12px] text-[#3071e1] border border-[#3071e1] bg-transparent rounded-[6px] px-[10px] py-[4px] hover:bg-[rgba(48,113,225,0.08)] transition-colors"
-        >
-          + New
-        </button>
       </div>
 
       {/* Scrollable List */}

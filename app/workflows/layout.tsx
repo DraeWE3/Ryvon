@@ -18,7 +18,7 @@ export default function WorkflowsLayout({
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar user={session?.user} />
-      <SidebarInset className={`relative min-h-screen overflow-hidden flex flex-col ${isCanvasPage ? 'bg-[#050812]' : 'bg-[#000]'}`}>
+      <SidebarInset className={`relative min-h-[100dvh] overflow-hidden flex flex-col ${isCanvasPage ? 'bg-[#050812]' : 'bg-[#000]'}`}>
         {/* Layout Overlays — hidden on canvas builder */}
         {!isCanvasPage && (
           <>

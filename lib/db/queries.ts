@@ -10,6 +10,7 @@ import {
   gte,
   inArray,
   lt,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -278,14 +279,19 @@ export async function getChatsByUserId({
 }
 
 export async function getChatById({ id }: { id: string }) {
+  // Validate UUID format to prevent Postgres data type mismatch errors
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  
+  if (!uuidRegex.test(id)) {
+    console.warn(`[getChatById] Invalid UUID format provided: ${id}`);
+    return null;
+  }
+
   try {
     const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
-    if (!selectedChat) {
-      return null;
-    }
-
-    return selectedChat;
-  } catch (_error) {
+    return selectedChat || null;
+  } catch (error) {
+    console.error(`[getChatById] Database error fetching chat ${id}:`, error);
     throw new ChatSDKError("bad_request:database", "Failed to get chat by id");
   }
 }
@@ -299,13 +305,21 @@ export async function saveMessages({ messages }: { messages: DBMessage[] }) {
 }
 
 export async function getMessagesByChatId({ id }: { id: string }) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  
+  if (!uuidRegex.test(id)) {
+    console.warn(`[getMessagesByChatId] Invalid UUID format: ${id}`);
+    return [];
+  }
+
   try {
     return await db
       .select()
       .from(message)
       .where(eq(message.chatId, id))
       .orderBy(asc(message.createdAt));
-  } catch (_error) {
+  } catch (error) {
+    console.error(`[getMessagesByChatId] Database error fetching messages for ${id}:`, error);
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get messages by chat id"
@@ -653,6 +667,30 @@ export async function saveCallLog(params: {
   }
 }
 
+export async function getCallLogByCallId({ callId }: { callId: string }) {
+  try {
+    const [log] = await db
+      .select()
+      .from(callLogs)
+      .where(sql`${callLogs.metadata}->>'callId' = ${callId}`);
+    return log ?? null;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to get call log by callId");
+  }
+}
+
+export async function getCallLogById({ id }: { id: string }) {
+  try {
+    const [log] = await db
+      .select()
+      .from(callLogs)
+      .where(eq(callLogs.id, id));
+    return log ?? null;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to get call log by id");
+  }
+}
+
 export async function getCallLogsByUserId({ userId }: { userId: string }) {
   try {
     return await db
@@ -675,6 +713,7 @@ export async function updateCallLogStatus({
   summary,
   duration,
   recordingUrl,
+  metadata,
 }: {
   id: string;
   status?: string;
@@ -682,11 +721,12 @@ export async function updateCallLogStatus({
   summary?: string;
   duration?: string;
   recordingUrl?: string;
+  metadata?: Record<string, any>;
 }) {
   try {
     return await db
       .update(callLogs)
-      .set({ status, transcript, summary, duration, recordingUrl })
+      .set({ status, transcript, summary, duration, recordingUrl, metadata })
       .where(eq(callLogs.id, id));
   } catch (_error) {
     throw new ChatSDKError("bad_request:database", "Failed to update call log");

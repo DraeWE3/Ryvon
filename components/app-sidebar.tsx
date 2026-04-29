@@ -11,6 +11,11 @@ import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { PlusIcon, TrashIcon } from "@/components/icons";
 import { WorkflowSidebarList } from "@/features/workflows/components/WorkflowSidebarList";
+import { useWorkflowUIStore } from "@/features/workflows/hooks/useCreateWorkflow";
+import { useGSAP } from "@gsap/react";
+import { gsap } from "gsap";
+import { containerSequence } from "@/lib/animations/timelines";
+import { useRef } from "react";
 import {
   getChatHistoryPaginationKey,
   SidebarHistory,
@@ -18,6 +23,7 @@ import {
 import { SidebarCallHistory } from "@/components/sidebar-call-history";
 import { SidebarUserNav } from "@/components/sidebar-user-nav";
 import { Button } from "@/components/ui/button";
+import { ComingSoonModal } from "@/components/coming-soon-modal";
 import {
   Sidebar,
   SidebarContent,
@@ -47,8 +53,23 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const pathname = usePathname();
   const { setOpenMobile, toggleSidebar } = useSidebar();
+  const { setCreateDrawerOpen } = useWorkflowUIStore();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  
+  const sidebarContentRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    if (sidebarContentRef.current) {
+      gsap.from(sidebarContentRef.current, {
+        opacity: 0,
+        duration: 0.5,
+        ease: "power2.out"
+      });
+      containerSequence(sidebarContentRef.current, ".sidebar-nav-item, .new-chat-btn-custom, .sidebar-section-label");
+    }
+  }, { scope: sidebarContentRef });
 
   const handleDeleteAll = () => {
     const deletePromise = fetch("/api/history", {
@@ -80,18 +101,26 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             </div>
           </div>
 
-          <div className="sidebar-content-scrollable">
-            <Link 
-              href="/" 
-              className="new-chat-btn-custom"
+          <div ref={sidebarContentRef} className="sidebar-content-scrollable">
+            <button 
+              className="new-chat-btn-custom w-full cursor-pointer"
               onClick={() => {
                 setOpenMobile(false);
-                router.refresh();
+                if (pathname?.startsWith("/workflows")) {
+                  setCreateDrawerOpen(true);
+                } else {
+                  router.push(pathname === "/call-agent" ? "/call-agent" : pathname?.startsWith("/tts") ? "/tts" : "/");
+                  router.refresh();
+                }
               }}
             >
-              <img src="/img-sidebar/new-chat.svg" alt="" className="w-5 h-5" />
-              <span>New Chat</span>
-            </Link>
+              <img 
+                src={pathname?.startsWith("/workflows") ? "/img-sidebar/automation.svg" : pathname === "/call-agent" ? "/img-sidebar/call-icon.svg" : pathname?.startsWith("/tts") ? "/img-sidebar/tts-icon.svg" : "/img-sidebar/new-chat.svg"} 
+                alt="" 
+                className={pathname === "/call-agent" ? "sidebar-nav-icon2" : pathname?.startsWith("/tts") ? "sidebar-nav-icon1" : "w-5 h-5"} 
+              />
+              <span>{pathname?.startsWith("/workflows") ? "New Workflow" : pathname === "/call-agent" ? "New Call" : pathname?.startsWith("/tts") ? "New Script" : "New Chat"}</span>
+            </button>
 
             <div className="sidebar-section">
               <h3 className="sidebar-section-label">Features</h3>
@@ -113,7 +142,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 </Link>
                 <Link 
                   href="/workflows" 
-                  className={`sidebar-nav-item ${pathname?.startsWith('/workflows') ? 'border-l-2 border-[#3071e1] bg-[rgba(48,113,225,0.08)]' : ''}`} 
+                  className="sidebar-nav-item" 
                   onClick={() => setOpenMobile(false)}
                 >
                   <img src="/img-sidebar/automation.svg" alt="" className="sidebar-nav-icon" />
@@ -127,7 +156,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               <div className="flex-1 mt-4 border-t border-[rgba(255,255,255,0.06)] pt-2 overflow-hidden flex flex-col h-full">
                 <WorkflowSidebarList userId={user?.id} />
               </div>
-            ) : pathname === "/call-agent" ? (
+            ) : pathname?.startsWith("/call-agent") ? (
               <div className="recent-activity-section">
                 <h3 className="sidebar-section-label">Call History</h3>
                 <SidebarCallHistory user={user} />
@@ -146,7 +175,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <img src="/img-sidebar/theme-switch.svg" alt="" className="footer-nav-icon" />
                 <span>Theme Switcher</span>
               </div>
-              <div className="footer-nav-item" onClick={() => {}}>
+              <div className="footer-nav-item" onClick={() => setShowSupportModal(true)}>
                 <img src="/img-sidebar/support.svg" alt="" className="footer-nav-icon" />
                 <span>Support</span>
               </div>
@@ -181,6 +210,15 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ComingSoonModal 
+        isOpen={showSupportModal}
+        onClose={() => setShowSupportModal(false)}
+        title="Support Feature Coming Soon"
+        description="We're working on bringing advanced support capabilities to Ryvon. Enable real-world help powered by AI."
+        featureName="Support"
+        iconPath="/images/support-cs.svg"
+      />
     </>
   );
 }

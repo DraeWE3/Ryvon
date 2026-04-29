@@ -8,11 +8,15 @@ import { Toaster as HotToaster } from "react-hot-toast";
 
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
+import ComingSoonOverlay from "@/components/coming-soon-overlay";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://chat.vercel.ai"),
-  title: "Ryvon AI",
-  description: "Revolutionary AI asistant (prototype)",
+  metadataBase: new URL("https://ryvon.ai"),
+  title: "Ryvon AI | Advanced Intelligent Infrastructure",
+  description: "The elite orchestration layer for advanced AI workflows, autonomous voice agents, and next-generation multi-modal intelligence.",
+  icons: {
+    icon: "/favicon.webp",
+  },
 };
 
 export const viewport = {
@@ -77,10 +81,27 @@ export default function RootLayout({
           disableTransitionOnChange
           enableSystem
         >
-          <Toaster position="top-center" />
+          <Toaster 
+            position="top-center" 
+            toastOptions={{
+              className: 'ryvon-toast',
+              style: {
+                background: 'rgba(9, 12, 21, 0.8)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(50, 162, 242, 0.2)',
+                color: '#fff',
+                borderRadius: '16px',
+                fontFamily: 'inherit',
+              }
+            }}
+          />
           <HotToaster position="top-center" />
           <QueryProvider>
-            <SessionProvider>{children}</SessionProvider>
+            <SessionProvider>
+              <ComingSoonOverlay>
+                {children}
+              </ComingSoonOverlay>
+            </SessionProvider>
           </QueryProvider>
           <SpeedInsights />
         </ThemeProvider>

@@ -657,7 +657,7 @@ Email:`;
   };
 
   return (
-    <div className="h-screen bg-[#0d0d0d] text-white flex flex-col">
+    <div className="h-[100dvh] bg-[#0d0d0d] text-white flex flex-col">
       {/* Header */}
       <div className="border-b border-gray-800 bg-[#111111]">
         <div className="flex items-center justify-between px-6 py-4">

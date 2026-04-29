@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { phoneNumber, assistantId, language, customPrompt } = await request.json();
+    const { phoneNumber, assistantId, language, customPrompt, advancedSettings } = await request.json();
 
     if (!phoneNumber) {
       return NextResponse.json(
@@ -19,9 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate environment variables
     if (!process.env.VAPI_PRIVATE_KEY) {
-      console.error('VAPI_PRIVATE_KEY is not configured');
       return NextResponse.json(
         { success: false, error: 'API configuration error - Private key missing' },
         { status: 500 }
@@ -29,7 +27,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (!process.env.VAPI_PHONE_NUMBER_ID) {
-      console.error('VAPI_PHONE_NUMBER_ID is not configured');
       return NextResponse.json(
         { success: false, error: 'Phone number configuration error' },
         { status: 500 }
@@ -38,49 +35,81 @@ export async function POST(request: NextRequest) {
 
     const targetAssistantId = assistantId || process.env.VAPI_ASSISTANT_ID;
 
-    // Construct Assistant Overrides
-    const assistantOverrides: any = {};
-    
-    if (customPrompt) {
-      assistantOverrides.model = {
-        provider: 'openai',
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: customPrompt,
-          },
-        ],
-      };
+    // ─── Build Assistant Overrides (CLEAN) ───
+    // Philosophy:
+    //   - The Call Script is the PRIMARY instruction (what to talk about)
+    //   - The Persona defines the CHARACTER/STYLE (how to talk)
+    //   - The trained assistant on the Vapi dashboard handles voice, model, and tools natively
+    //   - We ONLY override: system prompt, firstMessage, maxDuration, serverUrl
+    const assistantOverrides: Record<string, any> = {};
+
+    // 1. Build the system prompt: Persona character + Call Script
+    let systemPrompt = '';
+
+    // If a persona prompt is provided, it defines the character
+    if (advancedSettings?.persona) {
+      systemPrompt += `### YOUR CHARACTER ###\n${advancedSettings.persona}\n\n`;
     }
 
-    if (language === 'hi') {
-      const hindiInstruction = "CRITICAL INSTRUCTION: You MUST speak entirely in Hindi. Do not use English. Always reply in the Hindi language.";
+    // The call script is the PRIMARY conversation directive
+    if (customPrompt && customPrompt.trim().length > 0) {
+      systemPrompt += `### CALL SCRIPT (FOLLOW THIS STRICTLY) ###\n${customPrompt}\n\n`;
+      systemPrompt += `IMPORTANT: Your entire conversation must follow the call script above. `;
+      systemPrompt += `Introduce yourself as described in the script. Stay on topic. `;
+      systemPrompt += `If the person asks something outside the script scope, politely redirect back to the script objective.\n`;
+    }
 
-      if (!assistantOverrides.model) {
-        assistantOverrides.model = {
-          provider: 'openai',
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'system',
-              content: hindiInstruction,
-            },
-          ],
-        };
-      } else if (assistantOverrides.model.messages && assistantOverrides.model.messages.length > 0) {
-        assistantOverrides.model.messages[0].content += `\n\n${hindiInstruction}`;
+    // Language directive
+    if (language && language !== 'en') {
+      const langMap: Record<string, string> = {
+        hi: 'Hindi (हिन्दी)',
+        es: 'Spanish (Español)',
+        fr: 'French (Français)',
+      };
+      const langName = langMap[language] || language;
+      systemPrompt += `\nCRITICAL: You MUST speak entirely in ${langName}. Do not use English.\n`;
+    }
+
+    // Max call duration
+    if (advancedSettings?.maxDuration) {
+      const maxSecs = parseInt(advancedSettings.maxDuration) * 60;
+      if (!isNaN(maxSecs) && maxSecs > 0) {
+        assistantOverrides.maxDurationSeconds = maxSecs;
       }
     }
 
-    console.log('Initiating call with:', {
+    // Webhook for call events
+    const defaultWebhook = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook/vapi`;
+    assistantOverrides.serverMessages = ["end-of-call-report", "status-update", "hang"];
+    assistantOverrides.serverUrl = defaultWebhook;
+
+    // 2. Only set model override if we have a call script or custom prompt
+    //    Otherwise, let the trained assistant use its native dashboard config
+    if (systemPrompt.trim().length > 0) {
+      assistantOverrides.model = {
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: [{ role: 'system', content: systemPrompt }],
+      };
+
+      // Set a first message based on persona name or generic
+      if (advancedSettings?.personaName) {
+        assistantOverrides.firstMessage = `Hello, this is ${advancedSettings.personaName}. How are you doing today?`;
+      } else {
+        assistantOverrides.firstMessage = "Hello, how are you doing today?";
+      }
+      assistantOverrides.firstMessageMode = 'assistant-speaks-first';
+    }
+
+    console.log('[Call API] Initiating call:', {
       phoneNumber,
-      phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
       assistantId: targetAssistantId,
-      overrides: assistantOverrides,
+      hasScript: !!(customPrompt && customPrompt.trim().length > 0),
+      hasPersona: !!advancedSettings?.persona,
+      language,
     });
 
-    // Make request to VAPI to initiate call
+    // 3. Make request to VAPI
     const response = await fetch('https://api.vapi.ai/call/phone', {
       method: 'POST',
       headers: {
@@ -97,26 +126,24 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    // Handle non-OK responses
     if (!response.ok) {
       const errorText = await response.text();
       let errorData;
-      
       try {
         errorData = JSON.parse(errorText);
       } catch {
         errorData = { message: errorText };
       }
 
-      console.error('VAPI API Error:', {
+      console.error('[Call API] VAPI Error:', {
         status: response.status,
         error: errorData,
       });
-      
+
       return NextResponse.json(
-        { 
-          success: false, 
-          error: errorData.message || errorText || `Failed to initiate call: ${response.statusText}` 
+        {
+          success: false,
+          error: errorData.message || errorText || `Failed to initiate call: ${response.statusText}`
         },
         { status: response.status }
       );
@@ -124,7 +151,7 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
 
-    // Save to database and get the returned record
+    // 4. Save to database (non-blocking for speed)
     const [logRecord] = await saveCallLog({
       userId: session.user.id,
       phoneNumber: phoneNumber,
@@ -134,6 +161,9 @@ export async function POST(request: NextRequest) {
         language,
         customPrompt,
         callId: data.id,
+        controlUrl: data.monitor?.controlUrl || null,
+        listenUrl: data.monitor?.listenUrl || null,
+        personaName: advancedSettings?.personaName || null,
       },
     });
 
@@ -142,14 +172,16 @@ export async function POST(request: NextRequest) {
       callId: data.id,
       logId: logRecord?.id,
       status: data.status,
+      controlUrl: data.monitor?.controlUrl || null,
+      listenUrl: data.monitor?.listenUrl || null,
     });
 
   } catch (error) {
-    console.error('Error initiating call:', error);
+    console.error('[Call API] Error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
@@ -170,43 +202,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate environment variable
     if (!process.env.VAPI_PRIVATE_KEY) {
-      console.error('VAPI_PRIVATE_KEY is not configured');
       return NextResponse.json(
-        { success: false, error: 'API configuration error - Private key missing' },
+        { success: false, error: 'API configuration error' },
         { status: 500 }
       );
     }
 
-    // Fetch call status from VAPI using PRIVATE key
     const response = await fetch(`https://api.vapi.ai/call/${callId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}`, // PRIVATE key
+        'Authorization': `Bearer ${process.env.VAPI_PRIVATE_KEY}`,
       },
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       let errorData;
-      
       try {
         errorData = JSON.parse(errorText);
       } catch {
         errorData = { message: errorText };
       }
 
-      console.error('VAPI Status Check Error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData
-      });
-      
       return NextResponse.json(
-        { 
-          success: false, 
-          error: errorData.message || 'Failed to fetch call status' 
+        {
+          success: false,
+          error: errorData.message || 'Failed to fetch call status'
         },
         { status: response.status }
       );
@@ -214,21 +236,20 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
 
-    // If call is finished, update database with final status
+    // If call is finished, update database
     if (data.status === 'completed' || data.status === 'ended' || data.status === 'failed') {
       if (logId) {
         try {
           await updateCallLogStatus({
             id: logId,
-            status: data.status,
+            status: data.status === 'ended' ? 'completed' : data.status,
             transcript: data.transcript || undefined,
             summary: data.summary || undefined,
             duration: data.duration?.toString() || undefined,
             recordingUrl: data.recordingUrl || undefined,
           });
-          console.log('Call log updated successfully for logId:', logId);
         } catch (err) {
-          console.error('Failed to update call log status:', err);
+          console.error('[Call API] Failed to update log:', err);
         }
       }
     }
@@ -245,11 +266,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error checking call status:', error);
+    console.error('[Call API] Status check error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );

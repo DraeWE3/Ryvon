@@ -1,9 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import type { Workflow } from "../types/workflow";
 import { WorkflowCard } from "./WorkflowCard";
 import { Skeleton } from "./Skeleton";
+import { useGSAP } from "@gsap/react";
+import { staggerReveal } from "@/lib/animations/timelines";
 
 interface WorkflowGridProps {
   workflows?: Workflow[];
@@ -20,6 +22,14 @@ export function WorkflowGrid({
   onRetry,
   onToggle 
 }: WorkflowGridProps) {
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    if (!isLoading && workflows && workflows.length > 0) {
+      staggerReveal(".workflow-card-item", 0.1);
+    }
+  }, { scope: gridRef, dependencies: [workflows, isLoading] });
+
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center py-12 rounded-[24px] border border-[rgba(255,255,255,0.10)] bg-[#000]">
@@ -46,7 +56,7 @@ export function WorkflowGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full pb-10">
+    <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 w-full pb-10">
       {isLoading ? (
         Array.from({ length: 6 }).map((_, i) => (
           <div key={`skel-card-${i}`} className="bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.08)] rounded-[24px] p-6 h-[240px] flex flex-col gap-4">

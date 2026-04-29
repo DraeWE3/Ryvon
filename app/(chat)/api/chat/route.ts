@@ -33,6 +33,8 @@ import { initiateCall } from "@/lib/ai/tools/initiate-call";
 import { listAssistants } from "@/lib/ai/tools/list-assistants";
 import { manageWorkflows } from "@/lib/ai/tools/manage-workflows";
 import { checkConnectors } from "@/lib/ai/tools/check-connectors";
+import { fetchEmails } from "@/lib/ai/tools/fetch-emails";
+import { sendEmailTool } from "@/lib/ai/tools/send-email-tool";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
@@ -356,6 +358,8 @@ export async function POST(request: Request) {
                   "listAssistants",
                   "manageWorkflows",
                   "checkConnectors",
+                  "fetchEmails",
+                  "sendEmailTool",
                 ],
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: {
@@ -370,6 +374,8 @@ export async function POST(request: Request) {
             listAssistants: listAssistants(),
             manageWorkflows: manageWorkflows({ session }),
             checkConnectors: checkConnectors({ session }),
+            fetchEmails: fetchEmails({ session }),
+            sendEmailTool: sendEmailTool({ session }),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

@@ -2,21 +2,18 @@
 
 import React, { useState } from 'react'
 import Icon1 from "../../artifacts/image/down.svg"
-import Icon2 from "../../artifacts/image/setting.svg"
 import Logo from "../../artifacts/image/glass-ryvon.png"
-import Logo2 from "../../artifacts/image/cortex.png" // Add your second logo
-import Logo3 from "../../artifacts/image/voice.png" // Add your third logo
-import Logo4 from "../../artifacts/image/flow.png" // Add your fourth logo
+import Logo2 from "../../artifacts/image/cortex.png" 
+import Logo3 from "../../artifacts/image/voice.png" 
+import Logo4 from "../../artifacts/image/flow.png" 
 import Image from 'next/image'
 import Play from "../../artifacts/image/play.svg"
 import Next from "../../artifacts/image/next.svg"
 import { useRouter } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const WelcomePage = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const router = useRouter();
 
   const slides = [
@@ -76,61 +73,20 @@ const WelcomePage = () => {
   return (
     <div className="welcome-page">
       <div className="welcome-top">
-        <div className="mobile-nav-trigger" onClick={() => setIsSidebarOpen(true)}>
-          <Menu color="white" size={24} />
+        {/* Desktop Branding - Left */}
+        <div className="desktop-only">
+          <div className="btn2 btn premium-btn">
+            <p>RyvonAI v1.0</p>
+          </div>
         </div>
 
-        <div className="desktop-nav">
-          <div className="btn2 btn">
-            <p>RyvonAI v10</p>
-            <Image className="btn-img" src={Icon1} alt="Ryvon Icon" />
-          </div>
-          <div className="btn2 btn">
-            <p>configuration</p>
-            <Image className="btn-img" src={Icon2} alt="Ryvon Icon" />
+        {/* Mobile Branding - Top Right */}
+        <div className="mobile-only ml-auto">
+          <div className="btn2 btn premium-btn">
+            <p>RyvonAI v1.0</p>
           </div>
         </div>
       </div>
-
-      {/* Mobile Sidebar Overlay */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div 
-            className="welcome-sidebar-overlay active"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Mobile Sidebar Content */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div 
-            className="welcome-sidebar open"
-            initial={{ x: -250 }}
-            animate={{ x: 0 }}
-            exit={{ x: -250 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          >
-            <div className="sidebar-close" onClick={() => setIsSidebarOpen(false)}>
-              <X color="white" size={24} />
-            </div>
-            <div className="sidebar-items">
-              <div className="btn2 btn">
-                <p>RyvonAI v10</p>
-                <Image className="btn-img" src={Icon1} alt="Ryvon Icon" />
-              </div>
-              <div className="btn2 btn">
-                <p>configuration</p>
-                <Image className="btn-img" src={Icon2} alt="Ryvon Icon" />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="slide-card">
         <AnimatePresence mode="wait">

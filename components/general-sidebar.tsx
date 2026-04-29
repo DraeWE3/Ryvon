@@ -10,6 +10,8 @@ import { unstable_serialize } from "swr/infinite";
 import {
   getChatHistoryPaginationKey,
 } from "@/components/sidebar-history";
+import { SidebarCallHistory } from "./sidebar-call-history";
+import { usePathname } from "next/navigation";
 import {
   Sidebar,
   useSidebar,
@@ -27,6 +29,7 @@ import {
 
 export function GeneralSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { setOpenMobile, toggleSidebar } = useSidebar();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
@@ -63,15 +66,19 @@ export function GeneralSidebar({ user }: { user: User | undefined }) {
 
           <div className="sidebar-content-scrollable">
             <Link 
-              href="/" 
+              href={pathname?.startsWith("/tts") ? "/tts" : "/call-agent"} 
               className="new-chat-btn-custom"
               onClick={() => {
                 setOpenMobile(false);
                 router.refresh();
               }}
             >
-              <img src="/img-sidebar/new-chat.svg" alt="" className="w-5 h-5" />
-              <span>New Chat</span>
+              <img 
+                src={pathname?.startsWith("/tts") ? "/img-sidebar/tts-icon.svg" : "/img-sidebar/new-chat.svg"} 
+                alt="" 
+                className="w-5 h-5" 
+              />
+              <span>{pathname?.startsWith("/tts") ? "New Script" : "New Call"}</span>
             </Link>
 
             <div className="sidebar-section">
@@ -98,6 +105,13 @@ export function GeneralSidebar({ user }: { user: User | undefined }) {
                 </Link>
               </div>
             </div>
+
+            {pathname?.startsWith("/call-agent") && (
+              <div className="sidebar-section mt-4 pt-4 border-t border-[rgba(255,255,255,0.06)]">
+                <h3 className="sidebar-section-label">Call History</h3>
+                <SidebarCallHistory user={user} />
+              </div>
+            )}
           </div>
 
           <div className="sidebar-footer-card-container">

@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { X } from 'lucide-react'
+import { X, Search } from 'lucide-react'
 
 // Map connector ID -> Simple Icons slug (see https://simpleicons.org)
 const ICON_SLUGS: Record<string, string> = {
@@ -101,7 +101,180 @@ interface Connector {
   apiUrl: string | null
 }
 
-import { WorkflowToggle } from '@/features/workflows/components/WorkflowToggle'
+import { SidebarToggle } from '@/components/sidebar-toggle'
+import { gsap } from 'gsap'
+import { useGSAP } from '@gsap/react'
+import { staggerReveal, containerSequence } from '@/lib/animations/timelines'
+import { MOTION } from '@/lib/animations/motion'
+
+function ConnectorCardItem({ 
+  connector, 
+  handleConnect, 
+  setAddingKeyFor, 
+  handleDisconnect, 
+  categoryColors,
+  isDisconnecting
+}: { 
+  connector: Connector, 
+  handleConnect: (id: string) => void, 
+  setAddingKeyFor: (c: Connector) => void, 
+  handleDisconnect: (id: string) => void, 
+  categoryColors: Record<string, string>,
+  isDisconnecting: boolean
+}) {
+  const cardRef = React.useRef<HTMLDivElement>(null)
+  const iconRef = React.useRef<HTMLDivElement>(null)
+  
+  const { contextSafe } = useGSAP({ scope: cardRef })
+
+  const handleMouseEnter = contextSafe(() => {
+    const tl = gsap.timeline()
+    tl.to(cardRef.current, {
+      scale: 1.02,
+      borderColor: "rgba(255,255,255,0.15)",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+      duration: MOTION.fast,
+      ease: "ryvon-snappy"
+    }, 0)
+    .to(iconRef.current, {
+      scale: 1.1,
+      rotate: 4,
+      duration: MOTION.fast,
+      ease: "power2.out"
+    }, 0)
+  })
+
+  const handleMouseLeave = contextSafe(() => {
+    const tl = gsap.timeline()
+    tl.to(cardRef.current, {
+      scale: 1,
+      borderColor: "rgba(255,255,255,0.08)",
+      boxShadow: "none",
+      duration: MOTION.base,
+      ease: "ryvon-soft"
+    }, 0)
+    .to(iconRef.current, {
+      scale: 1,
+      rotate: 0,
+      duration: MOTION.base,
+      ease: "power2.out"
+    }, 0)
+  })
+
+  return (
+    <div
+      ref={cardRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="connector-card-item bg-[#03060C] border border-[rgba(255,255,255,0.08)] rounded-[12px] p-5 flex flex-col min-h-[180px] overflow-hidden relative"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3 relative z-10">
+        <div className="flex items-center gap-3">
+          <div ref={iconRef} className="origin-center">
+            <ConnectorIcon id={connector.id} name={connector.name} />
+          </div>
+          <div>
+            <h3 className="font-gate text-[15px] text-[#ffffff] font-medium m-0">
+              {connector.name}
+            </h3>
+            <span
+              className="font-motive text-[10px] uppercase font-bold tracking-wider"
+              style={{ color: categoryColors[connector.category] || '#A8CEE5' }}
+            >
+              {connector.category}
+            </span>
+          </div>
+        </div>
+        {/* Status dot */}
+        <span
+          className={`w-[8px] h-[8px] rounded-full shadow-sm ${
+            connector.connected ? 'bg-[#10b981] shadow-[#10b981]/50' : 'bg-[rgba(255,255,255,0.15)] bg-opacity-30'
+          }`}
+        />
+      </div>
+
+      {/* Description */}
+      <p className="font-motive text-[13px] text-[rgba(255,255,255,0.40)] m-0 mb-3 flex-1 relative z-10 line-clamp-2">
+        {connector.description}
+      </p>
+
+      {/* Connection info */}
+      {connector.connected && (connector.accountEmail || connector.accountName) && (
+        <div className="mb-4 py-2 px-3 bg-[rgba(16,185,129,0.06)] border border-[rgba(16,185,129,0.15)] rounded-[6px] relative z-10">
+          <span className="font-motive text-[11px] text-[#10b981] truncate block">
+            Connected{connector.accountEmail ? ` as ${connector.accountEmail}` : connector.accountName ? ` as ${connector.accountName}` : ''}
+          </span>
+          {connector.connectedAt && (
+            <span className="font-motive text-[10px] text-[rgba(255,255,255,0.30)] block mt-[2px]">
+              {(() => {
+                const d = new Date(connector.connectedAt)
+                return isNaN(d.getTime()) ? '' : `Since ${format(d, 'MMM d, yyyy')}`
+              })()}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 flex-wrap mt-auto relative z-10">
+        {/* OAuth Connect */}
+        {connector.oauthSupported && !connector.connected && (
+          <button
+            onClick={() => handleConnect(connector.id)}
+            className="cursor-pointer font-gate font-bold text-[11px] text-[#ffffff] rounded-full py-[6px] px-4 transition-all text-center active:scale-95 border-none outline-none hover:shadow-[0_0_15px_rgba(140,223,244,0.3)] hover:brightness-110"
+            style={{
+              background: 'linear-gradient(180deg, rgba(168,206,229,0.9) 0%, rgba(0,125,192,0.9) 50%, rgba(0,28,60,0.95) 100%)',
+              boxShadow: '0 4px 15px rgba(0, 125, 192, 0.3), inset 0 1px 1px rgba(255,255,255,0.3)',
+            }}
+          >
+            Connect
+          </button>
+        )}
+
+        {/* Manual Add Key */}
+        {!connector.oauthSupported && !connector.connected && connector.id !== 'http' && connector.id !== 'ai' && (
+          <button
+            onClick={() => setAddingKeyFor(connector)}
+            className="cursor-pointer font-gate font-bold text-[11px] text-[#ffffff] bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.08)] hover:border-white/20 rounded-full py-[6px] px-4 transition-colors text-center active:scale-[0.97]"
+          >
+            Add API Key
+          </button>
+        )}
+
+        {/* Disconnect Buttons */}
+        {connector.connected && connector.id !== 'http' && connector.id !== 'ai' && (
+          <button
+            onClick={() => handleDisconnect(connector.id)}
+            disabled={isDisconnecting}
+            className="cursor-pointer font-gate font-bold text-[11px] text-[rgba(255,100,100,0.70)] hover:text-[rgba(255,100,100,1)] bg-[rgba(255,100,100,0.05)] border border-[rgba(255,100,100,0.15)] hover:border-[rgba(255,100,100,0.30)] rounded-full py-[6px] px-4 transition-colors text-center active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
+          </button>
+        )}
+
+        {/* Built-ins */}
+        {connector.connected && (connector.id === 'http' || connector.id === 'ai') && (
+          <span className="font-gate font-bold text-[11px] text-[rgba(255,255,255,0.5)] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.05)] rounded-full py-[4px] px-3">
+            ✓ Built-in
+          </span>
+        )}
+
+        {/* API Link */}
+        {connector.apiUrl && !connector.connected && (
+          <a
+            href={connector.apiUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto font-motive font-medium text-[11px] text-[rgba(255,255,255,0.35)] hover:text-[#8cdff4] transition-colors flex items-center gap-1 shrink-0 px-2"
+          >
+            Get Key →
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function ConnectorsPage() {
   const queryClient = useQueryClient()
@@ -114,12 +287,15 @@ export default function ConnectorsPage() {
       return res.json()
     },
   })
+  
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Modal State
   const [addingKeyFor, setAddingKeyFor] = useState<Connector | null>(null)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [accountNameInput, setAccountNameInput] = useState('')
   const [isSavingKey, setIsSavingKey] = useState(false)
+  const [disconnectingId, setDisconnectingId] = useState<string | null>(null)
 
   const handleConnect = (providerId: string) => {
     // Open OAuth flow in a new tab
@@ -157,6 +333,7 @@ export default function ConnectorsPage() {
   }
 
   const handleDisconnect = async (providerId: string) => {
+    setDisconnectingId(providerId)
     try {
       const res = await fetch(`/api/connectors/${providerId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to disconnect')
@@ -164,6 +341,8 @@ export default function ConnectorsPage() {
       toast.success('Connector disconnected')
     } catch {
       toast.error('Failed to disconnect connector')
+    } finally {
+      setDisconnectingId(null)
     }
   }
 
@@ -178,10 +357,22 @@ export default function ConnectorsPage() {
     'E-commerce': '#f97316',
   }
 
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  useGSAP(() => {
+    if (connectors && connectors.length > 0) {
+      if (containerRef.current) {
+        gsap.to(containerRef.current, { opacity: 1, duration: 0.5 });
+        containerSequence(containerRef.current.querySelector('.header-seq') as Element, ".connector-card-item", 0.1)
+      }
+    }
+  }, { scope: containerRef, dependencies: [connectors, isLoading] })
+
   return (
-    <div className="flex h-full flex-col bg-transparent p-8 overflow-y-auto workflow-bg relative">
+    <div ref={containerRef} className="flex h-full flex-col bg-transparent p-8 overflow-y-auto workflow-bg relative" style={{ opacity: 0 }}>
+      <div className="header-seq">
       <div className="flex items-center gap-4 mb-6">
-        <WorkflowToggle className="p-0 mr-0" />
+        <SidebarToggle className="p-0 mr-0" />
         {/* Breadcrumbs */}
         <div className="flex items-center gap-2 font-motive text-[13px] text-[rgba(255,255,255,0.40)]">
           <Link href="/workflows" className="hover:text-white transition-colors">Workflows</Link>
@@ -189,141 +380,76 @@ export default function ConnectorsPage() {
           <span className="text-white">Connectors</span>
         </div>
       </div>
-
-      <div className="flex items-start justify-between mb-8">
+ 
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
         <div>
           <h1 className="font-gate text-[24px] text-[#ffffff] font-medium leading-tight mb-2 m-0">
             Connectors
           </h1>
           <p className="font-motive text-[14px] text-[rgba(255,255,255,0.45)] m-0">
-            Connect your tools to use them in workflow steps.
+            Connect your tools to use them dynamically inside your workflows.
           </p>
         </div>
+ 
+        {/* Search Bar */}
+        <div className="relative group/search w-full md:max-w-xs">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 text-white/30 group-focus-within/search:text-[#8cdff4] transition-colors" />
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search connectors..."
+            className="w-full bg-white/[0.03] border border-white/10 rounded-full py-2.5 pl-11 pr-4 font-motive text-[13px] text-white placeholder:text-white/20 focus:outline-none focus:border-[#8cdff4]/50 focus:bg-white/[0.06] focus:shadow-[0_0_20px_rgba(140,223,244,0.1)] transition-all"
+          />
+        </div>
+      </div>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.08)] rounded-[12px] p-5 h-[180px] animate-pulse" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {connectors?.map((connector) => (
-            <div
-              key={connector.id}
-              className="bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.08)] rounded-[12px] p-5 flex flex-col hover:border-[rgba(255,255,255,0.15)] transition-colors"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <ConnectorIcon id={connector.id} name={connector.name} />
-                  <div>
-                    <h3 className="font-gate text-[15px] text-[#ffffff] font-medium m-0">
-                      {connector.name}
-                    </h3>
-                    <span
-                      className="font-motive text-[10px] uppercase"
-                      style={{ color: categoryColors[connector.category] || '#888' }}
-                    >
-                      {connector.category}
-                    </span>
-                  </div>
-                </div>
-                {/* Status dot */}
-                <span
-                  className={`w-[8px] h-[8px] rounded-full ${
-                    connector.connected ? 'bg-[#10b981]' : 'bg-[rgba(255,255,255,0.15)]'
-                  }`}
-                />
-              </div>
-
-              {/* Description */}
-              <p className="font-motive text-[12px] text-[rgba(255,255,255,0.40)] m-0 mb-3 flex-1">
-                {connector.description}
-              </p>
-
-              {/* Connection info */}
-              {connector.connected && (connector.accountEmail || connector.accountName) && (
-                <div className="mb-3 py-2 px-3 bg-[rgba(16,185,129,0.06)] border border-[rgba(16,185,129,0.15)] rounded-[6px]">
-                  <span className="font-motive text-[11px] text-[#10b981] truncate block">
-                    Connected{connector.accountEmail ? ` as ${connector.accountEmail}` : connector.accountName ? ` as ${connector.accountName}` : ''}
-                  </span>
-                  {connector.connectedAt && (
-                    <span className="font-motive text-[10px] text-[rgba(255,255,255,0.30)] block mt-[2px]">
-                      {(() => {
-                        const d = new Date(connector.connectedAt)
-                        return isNaN(d.getTime()) ? '' : `Since ${format(d, 'MMM d, yyyy')}`
-                      })()}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* OAuth Connect */}
-                {connector.oauthSupported && !connector.connected && (
-                  <button
-                    onClick={() => handleConnect(connector.id)}
-                    className="cursor-pointer font-motive text-[11px] text-[#ffffff] rounded-full py-[5px] px-4 transition-all text-center active:scale-95 border border-transparent hover:border-[#8cdff4]"
-                    style={{
-                      background: 'linear-gradient(180deg, #A8CEE5 0%, #007DC0 50%, #001C3C 100%)',
-                      boxShadow: '0 4px 15px rgba(0, 125, 192, 0.3)',
-                    }}
-                  >
-                    Connect
-                  </button>
-                )}
-
-                {/* Manual Add Key */}
-                {!connector.oauthSupported && !connector.connected && connector.id !== 'http' && connector.id !== 'ai' && (
-                  <button
-                    onClick={() => setAddingKeyFor(connector)}
-                    className="cursor-pointer font-motive text-[11px] text-[#ffffff] bg-[rgba(255,255,255,0.10)] hover:bg-[rgba(255,255,255,0.15)] border border-[rgba(255,255,255,0.08)] rounded-[6px] py-[6px] px-3 transition-colors text-center"
-                  >
-                    Add Key
-                  </button>
-                )}
-
-                {/* Disconnect Buttons */}
-                {connector.connected && connector.id !== 'http' && connector.id !== 'ai' && (
-                  <button
-                    onClick={() => handleDisconnect(connector.id)}
-                    className="cursor-pointer font-motive text-[11px] text-[rgba(255,100,100,0.70)] hover:text-[rgba(255,100,100,1)] bg-[rgba(255,100,100,0.05)] border border-[rgba(255,100,100,0.15)] hover:border-[rgba(255,100,100,0.30)] rounded-[6px] py-[6px] px-3 transition-colors text-center"
-                  >
-                    Disconnect
-                  </button>
-                )}
-
-                {/* Built-ins */}
-                {connector.connected && (connector.id === 'http' || connector.id === 'ai') && (
-                  <span className="font-motive text-[11px] text-[rgba(255,255,255,0.5)] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.05)] rounded-[6px] py-[4px] px-2">
-                    ✓ Built-in
-                  </span>
-                )}
-
-                {/* API Link */}
-                {connector.apiUrl && !connector.connected && (
-                  <a
-                    href={connector.apiUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-auto font-motive text-[11px] text-[rgba(255,255,255,0.35)] hover:text-[#8cdff4] transition-colors flex items-center gap-1 shrink-0"
-                  >
-                    Get API Key →
-                  </a>
-                )}
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {connectors
+            ?.filter(c => 
+              c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+              c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              c.category.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            .map((connector) => (
+              <ConnectorCardItem 
+                 key={connector.id} 
+                 connector={connector} 
+                 handleConnect={handleConnect} 
+                 setAddingKeyFor={setAddingKeyFor} 
+                 handleDisconnect={handleDisconnect} 
+                 categoryColors={categoryColors} 
+                 isDisconnecting={disconnectingId === connector.id}
+              />
+            ))}
+          {connectors && searchQuery && connectors.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase()) || c.category.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+            <div className="col-span-full py-12 flex flex-col items-center justify-center text-center opacity-50">
+              <Search className="w-12 h-12 mb-4 text-white/10" />
+              <p className="font-motive text-sm text-white/40">No connectors found matching "{searchQuery}"</p>
             </div>
-          ))}
+          )}
         </div>
       )}
 
       {/* Manual API Key Modal */}
       {addingKeyFor && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.1)] rounded-[16px] w-full max-w-md shadow-2xl relative overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.1)] rounded-[16px] w-full max-w-md shadow-2xl relative overflow-hidden flex flex-col scale-95 opacity-0 animate-[modalEnter_0.3s_cubic-bezier(0.22,1,0.36,1)_forwards]">
+            <style>{`
+              @keyframes modalEnter {
+                to { opacity: 1; transform: scale(1); }
+              }
+            `}</style>
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#8cdff4] to-transparent opacity-50" />
             
             {/* Header */}

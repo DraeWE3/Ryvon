@@ -2,10 +2,9 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { SidebarToggle } from "@/components/sidebar-toggle";
-import { Menu, X, Loader2, Pen } from "lucide-react";
+import { Loader2, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession, signOut } from "next-auth/react";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
   Select,
@@ -19,7 +18,6 @@ export default function SettingsPage() {
   const { data: session, update } = useSession();
   const router = useRouter();
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("Profile");
   
   // Form State
@@ -66,11 +64,7 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error("Upload failed");
 
       const data = await res.json();
-      
-      // The API returns an array of uploaded files when using uploadQueue in chunks
-      // but if we used standard Vercel Blob from route, it returns `pathname`, `url`
       const imageUrl = Array.isArray(data) ? data[0].url : data.url;
-      
       setImage(imageUrl);
     } catch (err) {
       console.error(err);
@@ -135,27 +129,18 @@ export default function SettingsPage() {
 
   return (
     <div className="settings-bg">
-      <div className="chat-top">
+      <header className="chat-top">
         <div className="flex items-center gap-3">
           <SidebarToggle className="sidebar-toggle-external text-white" />
-          <div className="btn2 btn cursor-pointer desktop-only">
-            <p>RyvonAI v1.0</p>
-            <img src="/img/down.svg" alt="" />
-          </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="right-btncon desktop-only">
-            <div className="btn2 btn cursor-pointer text-white">
-              <p>Configuration</p>
-              <img src="/img/setting.svg" alt="" />
-            </div>
-          </div>
-          <div className="mobile-menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            <Menu color="white" />
+          {/* Branding - Right side only */}
+          <div className="btn2 btn premium-btn">
+            <p>RyvonAI v1.0</p>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="flex-1 w-full max-w-4xl mx-auto px-4 md:px-8 pt-8 pb-20 flex flex-col items-center">
         <h1 className="text-white text-3xl font-motive font-bold mb-10 tracking-wide">
@@ -173,7 +158,6 @@ export default function SettingsPage() {
               >
                 <img src={image} alt="Profile" className="w-16 h-16 rounded-full border border-blue-500/30 object-cover" />
                 
-                {/* Always-on subtle edit indicator */}
                 <div className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-blue-600 border-2 border-[#0A0F1A] flex items-center justify-center shadow-lg">
                    <Pen className="w-2.5 h-2.5 text-white" />
                 </div>
@@ -183,6 +167,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <input 
+                type="file" 
                 type="file" 
                 accept="image/*" 
                 className="hidden" 
@@ -200,7 +185,6 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          {/* Tab Navigation */}
           <div className="settings-glass-card flex flex-col sm:flex-row p-1 sm:p-2 w-full justify-between items-center sm:h-14 overflow-x-auto gap-2 sm:gap-0">
             {['Profile', 'Security', 'Billing', 'Integrations', 'Preferences'].map((tab) => (
               <div 
@@ -209,16 +193,12 @@ export default function SettingsPage() {
                 onClick={() => setActiveTab(tab)}
               >
                 {tab === 'Profile' && <img src="/img-sidebar/account.svg" className="w-4 h-4 mr-2 opacity-70" alt="" />}
-                {tab === 'Security' && <svg className="w-4 h-4 mr-2 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path></svg>}
-                {tab === 'Billing' && <svg className="w-4 h-4 mr-2 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>}
-                {tab === 'Integrations' && <svg className="w-4 h-4 mr-2 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>}
                 {tab === 'Preferences' && <img src="/img/setting.svg" className="w-4 h-4 mr-2 opacity-70" alt="" />}
                 {tab}
               </div>
             ))}
           </div>
 
-          {/* Profile Form Card */}
           <div className="settings-glass-card p-6 w-full flex flex-col">
             <h3 className="text-white text-xl font-motive font-medium mb-6">Profile</h3>
             
@@ -285,7 +265,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Danger Zone */}
           <div className="settings-glass-card p-6 w-full flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-t-red-900/30">
              <div className="flex flex-col mb-4 sm:mb-0">
                <h3 className="text-red-500 text-base font-motive font-medium mb-1 tracking-wide">Danger Zone</h3>

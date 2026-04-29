@@ -2,28 +2,42 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
 import { SidebarToggle } from '@/components/sidebar-toggle';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { cn } from '@/lib/utils';
 
 export default function TextToSpeechPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { isListening, transcript, toggle } = useSpeechToText();
+
+  useEffect(() => {
+    if (transcript) {
+      setText((prev) => {
+        const base = prev.trim();
+        return base ? `${base} ${transcript}` : transcript;
+      });
+    }
+  }, [transcript]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const generateSpeech = () => {
-    if (!text.trim()) {
+    if (!text.trim() || isGenerating) {
       setError('Please enter text');
       return;
     }
+    setIsGenerating(true);
     // Store text in sessionStorage for the generate page to pick up
     sessionStorage.setItem('ryvon_tts_text', text);
-    router.push('/tts/generate');
+    setTimeout(() => {
+      router.push('/tts/generate');
+    }, 500); // Short delay to show the generating state
   };
 
   if (!mounted) return null;
@@ -35,43 +49,12 @@ export default function TextToSpeechPage() {
         <div className='chat-top flex justify-between items-center w-full'>
           <div className="flex items-center gap-2">
             <SidebarToggle className="text-white" />
-            <div className="btn2 btn desktop-only"><p>RyvonAI v1.0</p><img src="/img/down.svg" alt="" /></div>
           </div>
           
           <div className="flex items-center gap-2">
-            <div className="right-btncon desktop-only">
-              <div className="btn2 btn"><p>Configuration</p><img src="/img/setting.svg" alt="" /></div>
-              <div className="btn2 btn"><p>Export</p><img src="/img/export.svg" alt="" /></div>
-            </div>
-            <div className="mobile-menu-btn" onClick={() => setIsMenuOpen(true)}>
-              <Menu color="white" />
-            </div>
+             <div className="btn2 btn premium-btn"><p>RyvonAI v1.0</p></div>
           </div>
         </div>
-
-        {/* Mobile Side Menu */}
-        {isMenuOpen && (
-          <>
-            <div 
-              className="side-menu-overlay active"
-              onClick={() => setIsMenuOpen(false)}
-            />
-            <div 
-              className={`side-menu ${isMenuOpen ? 'open' : ''}`}
-            >
-                <div className="menu-header">
-                  <div className="btn2 btn"><p>RyvonAI v1.0</p><img src="/img/down.svg" alt="" /></div>
-                  <div onClick={() => setIsMenuOpen(false)}>
-                    <X color="white" />
-                  </div>
-                </div>
-                <div className="menu-items">
-                  <div className="btn2 btn"><p>Configuration</p><img src="/img/setting.svg" alt="" /></div>
-                  <div className="btn2 btn"><p>Export</p><img src="/img/export.svg" alt="" /></div>
-                </div>
-              </div>
-            </>
-          )}
 
         <div className="chat-section2">
           <div className="intro-chat">
@@ -104,18 +87,25 @@ export default function TextToSpeechPage() {
                     <img src="/img/set.svg" alt="" />
                     <p>Settings</p>
                   </div>
-                  <div className="selection cursor-pointer">
-                    <img src="/img/opt.svg" alt="" />
-                    <p>Options</p>
-                  </div>
                 </div>
                 <div className="right">
-                  <div className="mic-btn">
-                    <img src="/img/mic.svg" alt="" />
+                  <div 
+                    className={cn(
+                      "mic-btn cursor-pointer rounded-full p-1.5 transition-all flex items-center justify-center",
+                      isListening && "bg-blue-500/10 animate-[pulse-blue_2s_infinite]"
+                    )}
+                    onClick={toggle}
+                    title={isListening ? "Stop Recording" : "Start Voice Input"}
+                  >
+                    <img 
+                      src="/img/mic.svg" 
+                      alt="" 
+                      className={cn("w-5 h-5", isListening && "brightness-150")} 
+                    />
                   </div>
-                  <div className="generate-btn" onClick={generateSpeech}>
-                    <p>Generate</p>
-                    <img src="/img/generate.svg" alt="" />
+                  <div className="generate-btn cursor-pointer wander-shake" onClick={generateSpeech}>
+                    <p>{isGenerating ? 'Generating...' : 'Generate'}</p>
+                    <img src={isGenerating ? "/images/loading-spinner.svg" : "/img/generate.svg"} alt="" className={isGenerating ? "animate-[wand-shake_0.4s_ease-in-out_infinite] w-4 h-4" : ""} />
                   </div>
                 </div>
               </div>
@@ -128,7 +118,7 @@ export default function TextToSpeechPage() {
       <style jsx>{`
         .tts-page-container {
           display: flex;
-          min-height: 100vh;
+          min-height: 100dvh;
           background: #000;
         }
 
@@ -249,68 +239,10 @@ export default function TextToSpeechPage() {
           }
         }
 
-        .mobile-menu-btn {
-          display: none;
-          cursor: pointer;
-        }
-
-        .side-menu {
-          position: fixed;
-          top: 0;
-          right: -100%;
-          width: 70%;
-          height: 100vh;
-          background-color: #000;
-          z-index: 2000;
-          transition: right 0.3s ease;
-          border-left: 1px solid #32A2F2;
-          padding: 2rem;
-          display: flex;
-          flex-direction: column;
-          gap: 2rem;
-        }
-
-        .side-menu.open {
-          right: 0;
-        }
-
-        .side-menu-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: rgba(0, 0, 0, 0.7);
-          z-index: 1999;
-          animation: fadeIn 0.2s ease-in-out;
-        }
-
-        .menu-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          width: 100%;
-        }
-
-        .menu-items {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-          width: 100%;
-        }
-
         /* Mobile Menu Media Query */
         @media (max-width: 780px) {
-          .desktop-only {
-            display: none !important;
-          }
-
-          .mobile-menu-btn {
-            display: block;
-          }
-          
           .chat-top {
-            justify-content: flex-end;
+            padding: 0 1rem;
           }
         }
       `}</style>

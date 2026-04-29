@@ -62,7 +62,7 @@ export default function Page() {
   return (
     <motion.div 
       {...motionProps}
-      className="relative min-h-screen overflow-hidden"
+      className="relative min-h-[100dvh] overflow-hidden"
     >
       <div className="background-container" />
       

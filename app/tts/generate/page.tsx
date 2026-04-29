@@ -15,6 +15,7 @@ import downloadBg from '../../../artifacts/image/download-bg.png';
 import downloadIcon from '../../../artifacts/image/download-icon.svg';
 import { Play, Pause, ArrowLeft, Menu, X } from 'lucide-react';
 import { SidebarToggle } from '@/components/sidebar-toggle';
+import { toast } from 'sonner';
 
 export default function TTSGeneratePage() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function TTSGeneratePage() {
   const [mounted, setMounted] = useState(false);
   const [showVoiceDropdown, setShowVoiceDropdown] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showMyVoicesModal, setShowMyVoicesModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [voices, setVoices] = useState<any[]>([]);
@@ -41,7 +43,7 @@ export default function TTSGeneratePage() {
   const animationRef = useRef<number | null>(null);
 
   // Voice settings
-  const [playbackSpeed, setPlaybackSpeed] = useState(0.5);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [stability, setStability] = useState(0.5);
   const [similarity, setSimilarity] = useState(0.75);
   const [styleExaggeration, setStyleExaggeration] = useState(0.5);
@@ -93,12 +95,17 @@ export default function TTSGeneratePage() {
       const response = await fetch('https://api.elevenlabs.io/v1/voices', {
         headers: { 'xi-api-key': key }
       });
-      if (!response.ok) throw new Error('Failed to fetch voices');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        throw new Error('Failed to fetch voices');
+      }
       const data = await response.json();
       setVoices(data.voices || []);
       if (data.voices?.length > 0) setSelectedVoiceId(data.voices[0].voice_id);
-    } catch (err) {
-      setError('Failed to load voices');
+    } catch (err: any) {
+      console.error('Fetch voices error:', err);
+      setError(`Failed to load voices: ${err.message}`);
     }
   };
 
@@ -291,50 +298,48 @@ export default function TTSGeneratePage() {
           {/* Top Bar */}
           <div className='chat-top flex justify-between items-center w-full'>
             <div className="flex items-center gap-2">
-              <SidebarToggle className="text-white" />
               <div 
-                className="btn2 btn desktop-only cursor-pointer"
+                className="btn2 btn border border-white/10 bg-white/5 backdrop-blur-md rounded-full px-4 py-2 flex items-center justify-center gap-2 hover:bg-white/10 transition-colors cursor-pointer"
                 onClick={() => router.push('/tts')}
               >
                 <ArrowLeft size={16} color="white" />
-                <p>Back to TTS</p>
+                <p className="whitespace-nowrap font-medium">Back to TTS</p>
               </div>
+              <SidebarToggle className="text-white" />
+              <div className="btn2 btn desktop-only premium-btn"><p>RyvonAI v1.0</p></div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="right-btncon desktop-only">
-                <div className="btn2 btn"><p>Configuration</p><img src="/img/setting.svg" alt="" /></div>
-                <div className="btn2 btn"><p>Export</p><img src="/img/export.svg" alt="" /></div>
-              </div>
-              <div className="mobile-menu-btn" onClick={() => setIsMenuOpen(true)}>
-                <Menu color="white" />
-              </div>
+            <div className="flex items-center gap-2 mobile-only">
+              <div className="btn2 btn premium-btn"><p>RyvonAI v1.0</p></div>
             </div>
           </div>
 
-          {/* Mobile Side Menu */}
-          {isMenuOpen && (
-            <>
-              <div
-                className="side-menu-overlay active"
-                onClick={() => setIsMenuOpen(false)}
-              />
-              <div className={`side-menu ${isMenuOpen ? 'open' : ''}`}>
-                <div className="menu-header">
-                  <div className="btn2 btn"><p>RyvonAI v1.0</p><img src="/img/down.svg" alt="" /></div>
-                  <div onClick={() => setIsMenuOpen(false)}>
-                    <X color="white" />
-                  </div>
-                </div>
-                <div className="menu-items">
-                  <div className="btn2 btn" onClick={() => router.push('/tts')}>
-                    <ArrowLeft size={16} color="white" />
-                    <p>Back to TTS</p>
-                  </div>
-                  <div className="btn2 btn"><p>Configuration</p><img src="/img/setting.svg" alt="" /></div>
+          {/* My Voices Coming Soon Modal */}
+          {showMyVoicesModal && (
+            <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowMyVoicesModal(false)}>
+              <div 
+                className="relative flex flex-col items-center text-center rounded-[2rem] p-8 max-w-sm w-[90%] border border-white/10 shadow-[0_0_50px_rgba(0,111,191,0.2)]"
+                style={{ background: 'linear-gradient(to bottom, rgba(0, 111, 191, 0.6), rgba(2, 6, 24, 0.52))' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <img src="/images/voice-cs.svg" alt="Coming Soon" className="w-16 h-16 mb-6" />
+                <h2 className="text-xl font-medium text-white mb-4" style={{ fontFamily: 'motive-reg' }}>Voice Feature Coming Soon</h2>
+                <p className="text-gray-300 text-sm mb-6 leading-relaxed">
+                  We're working on bringing advanced voice capabilities to Ryon.<br/><br/>
+                  Enable real-world interactions powered by AI.
+                </p>
+                <div className="flex gap-4 w-full">
+                  <button className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-b from-white/10 to-transparent border border-white/10 text-white font-medium hover:bg-white/10 transition-colors" 
+                    onClick={() => {
+                      setShowMyVoicesModal(false);
+                      toast.success("Notification enabled! We'll alert you as soon as this feature goes live.");
+                    }}>
+                    Notify Me
+                  </button>
+                  <button className="flex-1 py-3 px-4 rounded-xl bg-[#090C15] border border-white/5 text-white font-medium hover:bg-white/5 transition-colors" onClick={() => setShowMyVoicesModal(false)}>Close</button>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* Main Content — the former modal, now as inline layout */}
@@ -351,19 +356,7 @@ export default function TTSGeneratePage() {
                   <img className="drop-down" src={dDown.src} alt="" style={{ transform: showVoiceDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
 
                   {showVoiceDropdown && (
-                    <div className="voice-dropdown" style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      width: '100%',
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      backgroundColor: '#1E2124',
-                      border: '1px solid #32A2F2',
-                      borderRadius: '0.5rem',
-                      zIndex: 100,
-                      marginTop: '0.5rem'
-                    }} onClick={(e) => e.stopPropagation()}>
+                    <div className="absolute top-full left-0 w-full max-h-[250px] overflow-y-auto bg-black/90 border border-[#32A2F2]/50 backdrop-blur-xl rounded-xl shadow-[0_0_15px_rgba(50,162,242,0.3)] z-[100] mt-2 scrollbar-hide" onClick={(e) => e.stopPropagation()}>
                       {voices.map((voice) => (
                         <div
                           key={voice.voice_id}
@@ -372,18 +365,9 @@ export default function TTSGeneratePage() {
                             setShowVoiceDropdown(false);
                             generateSpeech(voice.voice_id);
                           }}
-                          style={{
-                            padding: '0.75rem',
-                            color: '#fff',
-                            cursor: 'pointer',
-                            borderBottom: '1px solid #ffffff20',
-                            fontSize: '0.9rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                          }}
+                          className="hover:bg-white/10 transition-colors flex items-center gap-2 px-4 py-3 cursor-pointer border-b border-white/5"
                         >
-                           <span>{voice.name}</span>
+                           <span className="text-white text-[0.85rem]" style={{fontFamily: 'motive-reg'}}>{voice.name}</span>
                         </div>
                       ))}
                     </div>
@@ -538,8 +522,8 @@ export default function TTSGeneratePage() {
                   </div>
                 </div>
 
-                <div className="mode-right-bottom">
-                  <div className="voice-download" onClick={() => {
+                <div className="mode-right-bottom" style={{ display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'center', gap: '1rem' }}>
+                  <div className="voice-download hover:scale-[1.02] transition-transform" onClick={() => {
                     if (audioUrl) {
                       const a = document.createElement('a');
                       a.href = audioUrl;
@@ -551,6 +535,14 @@ export default function TTSGeneratePage() {
                       <img className="download-icon-img" src={downloadIcon.src} alt="" />
                     </div>
                     <p>Download</p>
+                  </div>
+
+                  <div className="voice-download hover:scale-[1.02] transition-transform cursor-pointer border border-white/10" 
+                       onClick={() => setShowMyVoicesModal(true)}>
+                    <div className="download-icon" style={{ backgroundImage: `url('${downloadBg.src}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                      <img className="download-icon-img" src="/images/my-voice.svg" alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                    </div>
+                    <p>My Voices</p>
                   </div>
                 </div>
 
@@ -573,7 +565,7 @@ export default function TTSGeneratePage() {
       <style jsx>{`
         .tts-generate-page {
           display: flex;
-          min-height: 100vh;
+          min-height: 100dvh;
           background-image: url('${bgMod.src}');
           background-position: center;
           background-repeat: no-repeat;
@@ -596,14 +588,14 @@ export default function TTSGeneratePage() {
         }
 
         .modal-container {
-          width: 90%;
-          max-width: 1400px;
-          max-height: 85vh;
+          width: 95%;
+          max-width: 1600px;
+          min-height: 600px;
           display: flex;
           flex-direction: row;
           align-items: stretch;
           justify-content: center;
-          gap: 2rem;
+          gap: 2.5rem;
           position: relative;
         }
 
@@ -629,8 +621,8 @@ export default function TTSGeneratePage() {
         }
 
         .mod-left {
-          flex: 1;
-          min-width: 0;
+          flex: none;
+          width: 35vw;
           border-radius: 1rem;
           border: 1px solid #32A2F2;
           display: flex;
@@ -650,8 +642,8 @@ export default function TTSGeneratePage() {
         }
 
         .mod-right {
-          flex: 1;
-          min-width: 0;
+          flex: none;
+          width: 35vw;
           border-radius: 1rem;
           border: 1px solid #32A2F2;
           display: flex;
@@ -1094,7 +1086,7 @@ export default function TTSGeneratePage() {
           top: 0;
           right: -100%;
           width: 70%;
-          height: 100vh;
+          height: 100dvh;
           background-color: #000;
           z-index: 2000;
           transition: right 0.3s ease;
@@ -1142,6 +1134,19 @@ export default function TTSGeneratePage() {
         @media (max-width: 780px) {
           .mobile-menu-btn {
             display: block;
+          }
+        }
+
+        @media (max-width: 1024px) {
+          .modal-container {
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            width: 95%;
+          }
+          .mod-left, .mod-right {
+            width: 100%;
+            max-width: 100%;
           }
         }
       `}</style>

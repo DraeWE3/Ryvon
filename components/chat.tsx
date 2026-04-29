@@ -6,7 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import useSWRInfinite, { unstable_serialize } from "swr/infinite";
-import { motion, AnimatePresence } from "framer-motion";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
+import { staggerReveal } from "@/lib/animations/timelines";
 import { ChatHeader } from "@/components/chat-header";
 import {
   AlertDialog,
@@ -180,13 +182,37 @@ export function Chat({
     setMessages,
   });
 
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    if (!chatContainerRef.current) return;
+    
+    // Reveal the whole page
+    gsap.from(chatContainerRef.current, {
+      opacity: 0,
+      duration: 0.6,
+      ease: "power2.out"
+    });
+
+    // Reveal children
+    const items = chatContainerRef.current.querySelectorAll(".chat-anim-item");
+    if (items.length > 0) {
+      gsap.from(items, {
+        y: 20,
+        opacity: 0,
+        stagger: 0.1,
+        duration: 0.4,
+        ease: "ryvon-primary",
+        delay: 0.2
+      });
+    }
+  }, { scope: chatContainerRef, dependencies: [messages.length === 0] });
+
   return (
     <>
-      <motion.div 
+      <div 
+        ref={chatContainerRef}
         className="chat"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
       >
         <ChatHeader
           style={{ display: isArtifactVisible ? "none" : undefined }}
@@ -198,13 +224,9 @@ export function Chat({
 
         <div className={cn("chat-section", messages.length > 0 ? "active-chat" : "")}>
             {messages.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
+              <div className="chat-anim-item">
                 <Greeting />
-              </motion.div>
+              </div>
             )}
             
             <div className="chat-box">
@@ -223,55 +245,43 @@ export function Chat({
                  )}
 
                  {messages.length === 0 && (
-                   <motion.div
-                     initial={{ opacity: 0, y: 10 }}
-                     animate={{ opacity: 1, y: 0 }}
-                     transition={{ duration: 0.4, delay: 0.4 }}
-                   >
+                   <div className="chat-anim-item mt-8">
                      <ChatActionButtons />
-                   </motion.div>
+                   </div>
                  )}
 
-                 {!isReadonly && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.3 }}
-                      className="w-full flex justify-center"
-                    >
-                      <MultimodalInput
-                        isArtifactVisible={isArtifactVisible}
-                        attachments={attachments}
-                        chatId={id}
-                        input={input}
-                        messages={messages}
-                        onModelChange={setCurrentModelId}
-                        selectedModelId={currentModelId}
-                        selectedVisibilityType={visibilityType}
-                        sendMessage={sendMessage}
-                        setAttachments={setAttachments}
-                        setInput={setInput}
-                        setMessages={setMessages}
-                        status={status}
-                        stop={stop}
-                        usage={usage}
-                        className={messages.length > 0 ? "chatinput2" : ""}
-                      />
-                    </motion.div>
-                 )}
-                 
                  {messages.length === 0 && hasEmptyChatHistory && (
-                   <motion.div
-                     initial={{ opacity: 0, y: 10 }}
-                     animate={{ opacity: 1, y: 0 }}
-                     transition={{ duration: 0.4, delay: 0.5 }}
-                   >
+                   <div className="chat-anim-item mt-8">
                      <ChatSuggestions />
-                   </motion.div>
+                   </div>
                  )}
             </div>
         </div>
-      </motion.div>
+
+        {/* Input bar — lives OUTSIDE the scrollable section so it always stays at the bottom */}
+        {!isReadonly && (
+          <div className="chat-input-bar">
+            <MultimodalInput
+              isArtifactVisible={isArtifactVisible}
+              attachments={attachments}
+              chatId={id}
+              input={input}
+              messages={messages}
+              onModelChange={setCurrentModelId}
+              selectedModelId={currentModelId}
+              selectedVisibilityType={visibilityType}
+              sendMessage={sendMessage}
+              setAttachments={setAttachments}
+              setInput={setInput}
+              setMessages={setMessages}
+              status={status}
+              stop={stop}
+              usage={usage}
+              className={messages.length > 0 ? "chatinput2" : ""}
+            />
+          </div>
+        )}
+      </div>
 
       <Artifact
         attachments={attachments}
