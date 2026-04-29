@@ -70,9 +70,9 @@ export default function Page() {
         <header className="auth-header">
           <motion.img 
             {...(isMounted ? {
-              initial: { y: -20, opacity: 0 },
+              initial: { y: -10, opacity: 0 },
               animate: { y: 0, opacity: 1 },
-              transition: { delay: 0.2 }
+              transition: { delay: 0.05 }
             } : {})}
             src="/img/Ryvon-wordmark.svg" 
             alt="Ryvon AI" 
@@ -83,9 +83,9 @@ export default function Page() {
         <main className="auth-main-content">
           <motion.div 
             {...(isMounted ? {
-              initial: { scale: 0.9, opacity: 0, filter: 'blur(10px)' },
-              animate: { scale: 1, opacity: 1, filter: 'blur(0px)' },
-              transition: { type: "spring", stiffness: 260, damping: 20 }
+              initial: { scale: 0.95, opacity: 0 },
+              animate: { scale: 1, opacity: 1 },
+              transition: { type: "spring", stiffness: 300, damping: 25 }
             } : {})}
             className="login-card"
           >
@@ -94,9 +94,9 @@ export default function Page() {
 
             <motion.h1 
               {...(isMounted ? {
-                initial: { y: 10, opacity: 0 },
+                initial: { y: 5, opacity: 0 },
                 animate: { y: 0, opacity: 1 },
-                transition: { delay: 0.3 }
+                transition: { delay: 0.1 }
               } : {})}
               className="card-title"
             >
@@ -105,9 +105,9 @@ export default function Page() {
             
             <motion.div 
               {...(isMounted ? {
-                initial: { y: 10, opacity: 0 },
+                initial: { y: 5, opacity: 0 },
                 animate: { y: 0, opacity: 1 },
-                transition: { delay: 0.4 }
+                transition: { delay: 0.15 }
               } : {})}
               className="toggle-container"
             >
@@ -118,9 +118,9 @@ export default function Page() {
             {/* Google Sign-Up */}
             <motion.div
               {...(isMounted ? {
-                initial: { y: 10, opacity: 0 },
+                initial: { y: 5, opacity: 0 },
                 animate: { y: 0, opacity: 1 },
-                transition: { delay: 0.45 }
+                transition: { delay: 0.2 }
               } : {})}
             >
               <button
@@ -144,7 +144,7 @@ export default function Page() {
               {...(isMounted ? {
                 initial: { opacity: 0 },
                 animate: { opacity: 1 },
-                transition: { delay: 0.48 }
+                transition: { delay: 0.22 }
               } : {})}
               className="auth-divider"
             >
@@ -155,7 +155,7 @@ export default function Page() {
               {...(isMounted ? {
                 initial: { opacity: 0 },
                 animate: { opacity: 1 },
-                transition: { delay: 0.5 }
+                transition: { delay: 0.25 }
               } : {})}
               action={formAction} 
               className="login-form"
@@ -209,7 +209,7 @@ export default function Page() {
             {...(isMounted ? {
               initial: { opacity: 0 },
               animate: { opacity: 1 },
-              transition: { delay: 0.6 }
+              transition: { delay: 0.3 }
             } : {})}
             className="copyright"
           >

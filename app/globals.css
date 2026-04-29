@@ -89,7 +89,7 @@
 
 /* define theme */
 @theme {
-  --font-sans: var(--font-geist);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
   --breakpoint-toast-mobile: 600px;
@@ -898,7 +898,7 @@
 
 /* The wrapper that keeps the input bar pinned to the bottom of the page */
 .chat-input-bar {
-  width: 75%;
+  width: 85%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -931,7 +931,7 @@
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start; /* Changed from center to allow safe scrolling */
   flex-direction: column;
   overflow-y: auto;
   scrollbar-width: none;
@@ -985,17 +985,24 @@
 }
 
 .intro-chat h2{
-  font-family: gate !important;
+  font-family: nasa !important;
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
+  letter-spacing: -0.02em;
+  background: linear-gradient(to bottom, #ffffff, #9d9e9f);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-top: 1rem;
 }
 
 .chat-box{
-  width: 75%;
+  width: 85%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  margin: auto 0; /* Vertically center when space is available */
+  padding: 2rem 0; /* Add padding to prevent clipping when scrolling */
 }
 
 .buttons{
@@ -1051,7 +1058,7 @@
 .chatinput{
   min-height: 20vh;
   height: auto;
-  min-height: 190px; /* Increased min-height */
+  min-height: 190px;
 /* ... rest of properties ... */
  border-radius: 1rem;
  overflow: hidden;

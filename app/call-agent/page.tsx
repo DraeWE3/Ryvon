@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useTheme } from 'next-themes';
+
 import { useSearchParams, useRouter } from 'next/navigation';
 import { SidebarToggle } from '@/components/sidebar-toggle';
 import Papa from 'papaparse';
@@ -66,7 +66,7 @@ interface RecentCallLog {
 const DEFAULT_ASSISTANT_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || '50987159-147b-46d8-b5ec-9b530c673dd4';
 
 export default function AICallAgent() {
-  const { theme } = useTheme();
+
   const { toggleSidebar } = useSidebar();
   const [mounted, setMounted] = useState(false);
   

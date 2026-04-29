@@ -4,20 +4,20 @@ import { MOTION } from "./motion";
 /**
  * Reusable Stagger Reveal Timeline
  * A premium staggered fade-up for grid items or lists.
+ * Optimized: faster durations, tighter stagger for snappy feel.
  */
 export const staggerReveal = (targets: gsap.DOMTarget | string, delay: number = 0) => {
   return gsap.fromTo(
     targets,
-    { y: 24, opacity: 0, scale: 0.98 },
+    { y: 12, opacity: 0 },
     {
       y: 0,
       opacity: 1,
-      scale: 1,
-      duration: MOTION.base,
-      ease: "ryvon-primary",
+      duration: MOTION.fast,
+      ease: "power2.out",
       delay: delay,
       stagger: {
-        each: 0.06,
+        each: 0.03,
         from: "start",
       },
     }
@@ -26,7 +26,7 @@ export const staggerReveal = (targets: gsap.DOMTarget | string, delay: number = 
 
 /**
  * Container -> Children Choreography
- * Combines a high-level container fade with a layered child stagger.
+ * Optimized: instant container reveal, fast child stagger.
  */
 export const containerSequence = (
   container: gsap.DOMTarget | string, 
@@ -35,11 +35,8 @@ export const containerSequence = (
 ) => {
   const tl = gsap.timeline({ delay });
 
-  tl.fromTo(
-    container,
-    { opacity: 0 },
-    { opacity: 1, duration: MOTION.fast, ease: "ryvon-soft" }
-  ).add(staggerReveal(items), "-=0.1"); // Overlap slightly for premium feel
+  tl.set(container, { opacity: 1 })
+    .add(staggerReveal(items));
 
   return tl;
 };
@@ -60,20 +57,20 @@ export const drawerEnter = (
     {
       x: "0%",
       opacity: 1,
-      duration: MOTION.slow,
-      ease: "ryvon-primary",
+      duration: MOTION.base,
+      ease: "power2.out",
     }
   ).fromTo(
     content,
-    { y: 20, opacity: 0 },
+    { y: 12, opacity: 0 },
     {
       y: 0,
       opacity: 1,
-      duration: MOTION.base,
-      ease: "ryvon-primary",
-      stagger: 0.04,
+      duration: MOTION.fast,
+      ease: "power2.out",
+      stagger: 0.02,
     },
-    "-=0.3"
+    "-=0.15"
   );
 
   return tl;

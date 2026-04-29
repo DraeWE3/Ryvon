@@ -245,13 +245,37 @@ export function Chat({
                  )}
 
                  {messages.length === 0 && (
-                   <div className="chat-anim-item mt-8">
+                   <div className="chat-anim-item mt-4 mb-2 w-full flex justify-center">
                      <ChatActionButtons />
                    </div>
                  )}
 
+                 {/* Input bar placed ABOVE suggestions as per design */}
+                 {messages.length === 0 && !isReadonly && (
+                   <div className="chat-anim-item mt-2 mb-4 w-full">
+                     <MultimodalInput
+                       isArtifactVisible={isArtifactVisible}
+                       attachments={attachments}
+                       chatId={id}
+                       input={input}
+                       messages={messages}
+                       onModelChange={setCurrentModelId}
+                       selectedModelId={currentModelId}
+                       selectedVisibilityType={visibilityType}
+                       sendMessage={sendMessage}
+                       setAttachments={setAttachments}
+                       setInput={setInput}
+                       setMessages={setMessages}
+                       status={status}
+                       stop={stop}
+                       usage={usage}
+                       className="chatinput-intro"
+                     />
+                   </div>
+                 )}
+
                  {messages.length === 0 && hasEmptyChatHistory && (
-                   <div className="chat-anim-item mt-8">
+                   <div className="chat-anim-item w-full">
                      <ChatSuggestions />
                    </div>
                  )}
@@ -259,7 +283,7 @@ export function Chat({
         </div>
 
         {/* Input bar — lives OUTSIDE the scrollable section so it always stays at the bottom */}
-        {!isReadonly && (
+        {messages.length > 0 && !isReadonly && (
           <div className="chat-input-bar">
             <MultimodalInput
               isArtifactVisible={isArtifactVisible}

@@ -166,7 +166,10 @@ function ConnectorCardItem({
       ref={cardRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="connector-card-item bg-[#03060C] border border-[rgba(255,255,255,0.08)] rounded-[12px] p-5 flex flex-col min-h-[180px] overflow-hidden relative"
+      className="connector-card-item border border-[rgba(255,255,255,0.08)] rounded-[12px] p-5 flex flex-col min-h-[180px] overflow-hidden relative"
+      style={{
+        background: 'linear-gradient(135deg, rgba(22, 60, 115, 0.4) 0%, rgba(8, 20, 45, 0.8) 45%, rgba(4, 9, 20, 1) 100%)'
+      }}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-10">
@@ -360,16 +363,22 @@ export default function ConnectorsPage() {
   const containerRef = React.useRef<HTMLDivElement>(null)
 
   useGSAP(() => {
-    if (connectors && connectors.length > 0) {
-      if (containerRef.current) {
+    if (containerRef.current) {
+      // Set initial state via GSAP so it's visible if JS fails
+      gsap.set(containerRef.current, { opacity: 0 });
+      
+      if (connectors && connectors.length > 0) {
         gsap.to(containerRef.current, { opacity: 1, duration: 0.5 });
-        containerSequence(containerRef.current.querySelector('.header-seq') as Element, ".connector-card-item", 0.1)
+        containerSequence(containerRef.current.querySelector('.header-seq') as Element, ".connector-card-item", 0.02)
+      } else if (!isLoading) {
+        // Show even if empty
+        gsap.to(containerRef.current, { opacity: 1, duration: 0.5 });
       }
     }
   }, { scope: containerRef, dependencies: [connectors, isLoading] })
 
   return (
-    <div ref={containerRef} className="flex h-full flex-col bg-transparent p-8 overflow-y-auto workflow-bg relative" style={{ opacity: 0 }}>
+    <div ref={containerRef} className="flex h-full flex-col bg-transparent p-8 overflow-y-auto workflow-bg relative">
       <div className="header-seq">
       <div className="flex items-center gap-4 mb-6">
         <SidebarToggle className="p-0 mr-0" />

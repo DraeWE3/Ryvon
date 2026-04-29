@@ -117,17 +117,18 @@ export function GeneralSidebar({ user }: { user: User | undefined }) {
           <div className="sidebar-footer-card-container">
             <div className="sidebar-footer-card">
               <div className="footer-nav-item" onClick={() => {}}>
-                <img src="/img-sidebar/theme-switch.svg" alt="" className="footer-nav-icon" />
-                <span>Theme Switcher</span>
-              </div>
-              <div className="footer-nav-item" onClick={() => {}}>
                 <img src="/img-sidebar/support.svg" alt="" className="footer-nav-icon" />
                 <span>Support</span>
               </div>
-              {user && (
+              {user && user.type === "regular" ? (
                 <Link href="/settings" className="footer-nav-item">
                   <img src="/img-sidebar/account.svg" alt="" className="footer-nav-icon" />
-                  <span>Account</span>
+                  <span>Settings</span>
+                </Link>
+              ) : (
+                <Link href="/login" className="footer-nav-item">
+                  <img src="/img-sidebar/account.svg" alt="" className="footer-nav-icon" />
+                  <span>Sign In / Sign Up</span>
                 </Link>
               )}
             </div>

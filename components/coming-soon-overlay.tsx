@@ -48,7 +48,9 @@ export default function ComingSoonOverlay({ children }: { children: React.ReactN
     }
   };
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return <>{children}</>;
+  }
 
   return (
     <>
@@ -57,17 +59,17 @@ export default function ComingSoonOverlay({ children }: { children: React.ReactN
           <motion.div
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.8, ease: 'easeInOut' }}
+            transition={{ duration: 0.4, ease: 'easeInOut' }}
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#02060c] overflow-hidden"
           >
             {/* Background Effects */}
             <div className="absolute inset-0 bg-[url('/img/chat-bg.webp')] bg-cover bg-center opacity-40 mix-blend-overlay" />
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1200px] h-[600px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1EA7FF]/20 via-[#1EA7FF]/5 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1200px] h-[600px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1EA7FF]/20 via-[#1EA7FF]/5 to-transparent blur-2xl pointer-events-none" />
             
             <motion.div
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
               className="relative w-full max-w-md px-8 flex flex-col items-center"
             >
               {/* Logo / Icon Area */}

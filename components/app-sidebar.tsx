@@ -12,16 +12,12 @@ import { unstable_serialize } from "swr/infinite";
 import { PlusIcon, TrashIcon } from "@/components/icons";
 import { WorkflowSidebarList } from "@/features/workflows/components/WorkflowSidebarList";
 import { useWorkflowUIStore } from "@/features/workflows/hooks/useCreateWorkflow";
-import { useGSAP } from "@gsap/react";
-import { gsap } from "gsap";
-import { containerSequence } from "@/lib/animations/timelines";
 import { useRef } from "react";
 import {
   getChatHistoryPaginationKey,
   SidebarHistory,
 } from "@/components/sidebar-history";
 import { SidebarCallHistory } from "@/components/sidebar-call-history";
-import { SidebarUserNav } from "@/components/sidebar-user-nav";
 import { Button } from "@/components/ui/button";
 import { ComingSoonModal } from "@/components/coming-soon-modal";
 import {
@@ -60,16 +56,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   
   const sidebarContentRef = useRef<HTMLDivElement>(null);
 
-  useGSAP(() => {
-    if (sidebarContentRef.current) {
-      gsap.from(sidebarContentRef.current, {
-        opacity: 0,
-        duration: 0.5,
-        ease: "power2.out"
-      });
-      containerSequence(sidebarContentRef.current, ".sidebar-nav-item, .new-chat-btn-custom, .sidebar-section-label");
-    }
-  }, { scope: sidebarContentRef });
 
   const handleDeleteAll = () => {
     const deletePromise = fetch("/api/history", {
@@ -146,9 +132,26 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   onClick={() => setOpenMobile(false)}
                 >
                   <img src="/img-sidebar/automation.svg" alt="" className="sidebar-nav-icon" />
-                  <span className={pathname?.startsWith('/workflows') ? "text-[#ffffff]" : ""}>Workflows</span>
+                  <span className={pathname?.startsWith('/workflows') && !pathname?.includes('connectors') ? "text-[#ffffff]" : ""}>Workflows</span>
                 </Link>
-
+                <Link 
+                  href="/workflows/connectors" 
+                  className="sidebar-nav-item" 
+                  onClick={() => setOpenMobile(false)}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sidebar-nav-icon text-[rgba(255,255,255,0.60)]">
+                    <path d="M11 20h2" />
+                    <path d="M12 2v2" />
+                    <path d="M5 12H3" />
+                    <path d="M21 12h-2" />
+                    <path d="m5 5 1.5 1.5" />
+                    <path d="m17.5 17.5 1.5 1.5" />
+                    <path d="m5 19 1.5-1.5" />
+                    <path d="m17.5 6.5 1.5-1.5" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <span className={pathname?.startsWith('/workflows/connectors') ? "text-[#ffffff]" : ""}>Connectors</span>
+                </Link>
               </div>
             </div>
 
@@ -171,18 +174,19 @@ export function AppSidebar({ user }: { user: User | undefined }) {
 
           <div className="sidebar-footer-card-container">
             <div className="sidebar-footer-card">
-              <div className="footer-nav-item" onClick={() => {}}>
-                <img src="/img-sidebar/theme-switch.svg" alt="" className="footer-nav-icon" />
-                <span>Theme Switcher</span>
-              </div>
               <div className="footer-nav-item" onClick={() => setShowSupportModal(true)}>
                 <img src="/img-sidebar/support.svg" alt="" className="footer-nav-icon" />
                 <span>Support</span>
               </div>
-              {user && (
+              {user && user.type === "regular" ? (
                 <Link href="/settings" className="footer-nav-item">
                   <img src="/img-sidebar/account.svg" alt="" className="footer-nav-icon" />
-                  <span>Account</span>
+                  <span>Settings</span>
+                </Link>
+              ) : (
+                <Link href="/login" className="footer-nav-item">
+                  <img src="/img-sidebar/account.svg" alt="" className="footer-nav-icon" />
+                  <span>Sign In / Sign Up</span>
                 </Link>
               )}
             </div>

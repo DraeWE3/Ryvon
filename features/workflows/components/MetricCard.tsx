@@ -13,6 +13,7 @@ interface MetricCardProps {
 
 export function MetricCard({ label, value, trend, loading }: MetricCardProps) {
   const isUp = trend?.startsWith('+')
+  const isZero = trend === '0.0%'
   
   return (
     <div
@@ -41,12 +42,16 @@ export function MetricCard({ label, value, trend, loading }: MetricCardProps) {
         
         {trend && (
           <div className="flex flex-col items-end pb-1">
-             {isUp ? (
+             {isZero ? (
+               <div className="text-[#9CA3AF] drop-shadow-[0_0_8px_rgba(156,163,175,0.4)] mb-[2px] font-bold text-[16px] leading-none text-center">
+                 —
+               </div>
+             ) : isUp ? (
                <TrendingUp size={22} strokeWidth={2.5} className="text-[#00E676] drop-shadow-[0_0_8px_rgba(0,230,118,0.4)] mb-[2px]" />
              ) : (
                <TrendingDown size={22} strokeWidth={2.5} className="text-[#FF5252] drop-shadow-[0_0_8px_rgba(255,82,82,0.4)] mb-[2px]" />
              )}
-             <span className={`font-motive text-[14px] font-medium tracking-wide ${isUp ? 'text-[#00E676]' : 'text-[#FF5252]'}`}>
+             <span className={`font-motive text-[14px] font-medium tracking-wide ${isZero ? 'text-[#9CA3AF]' : isUp ? 'text-[#00E676]' : 'text-[#FF5252]'}`}>
                 {trend}
              </span>
           </div>

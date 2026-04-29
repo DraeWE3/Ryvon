@@ -3,7 +3,7 @@ import type { NextAuthConfig } from "next-auth";
 export const authConfig = {
   pages: {
     signIn: "/login",
-    newUser: "/",
+    newUser: "/welcome",
   },
   providers: [
     // added later in auth.ts since it requires bcrypt which is only compatible with Node.js
@@ -12,20 +12,33 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnPublicPage =
+
+      const isPublicPage =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/register") ||
+        nextUrl.pathname.startsWith("/welcome") ||
         nextUrl.pathname.startsWith("/api/auth");
 
-      if (isOnPublicPage) {
+      // Always allow public pages
+      if (isPublicPage) {
+        // If logged in and trying to access login/register, redirect to home
         if (isLoggedIn && (nextUrl.pathname.startsWith("/login") || nextUrl.pathname.startsWith("/register"))) {
           return Response.redirect(new URL("/", nextUrl));
         }
         return true;
       }
 
-      return isLoggedIn;
+      // Protected pages need real login
+      const isProtectedPage =
+        nextUrl.pathname.startsWith("/settings") ||
+        nextUrl.pathname.startsWith("/workflows/connectors");
+
+      if (isProtectedPage) {
+        return isLoggedIn;
+      }
+
+      // All other pages — allow everyone through (guest sessions created at page level)
+      return true;
     },
   },
 } satisfies NextAuthConfig;
-

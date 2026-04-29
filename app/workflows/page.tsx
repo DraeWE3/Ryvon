@@ -104,25 +104,25 @@ export default function WorkflowsDashboard() {
         <MetricCard 
           label="Total Workflows" 
           value={totalWorkflows} 
-          trend={totalWorkflows > 0 ? '+15.2%' : undefined}
+          trend={totalWorkflows > 0 ? '+15.2%' : '0.0%'}
           loading={isWorkflowsLoading} 
         />
         <MetricCard 
           label="Active Automations" 
           value={activeWorkflows} 
-          trend={activeWorkflows > 0 ? '+2.1%' : undefined}
+          trend={activeWorkflows > 0 ? '+2.1%' : '0.0%'}
           loading={isWorkflowsLoading} 
         />
         <MetricCard 
           label="Runs Today" 
           value={runsToday} 
-          trend={runsToday > 0 ? '+25.3%' : undefined}
+          trend={runsToday > 0 ? '+25.3%' : '0.0%'}
           loading={isStatsLoading} 
         />
         <MetricCard 
           label="All-time Executions" 
           value={totalRuns} 
-          trend={runsToday === 0 ? '-0.2%' : '+1.1%'}
+          trend={totalRuns > 0 ? '+1.1%' : '0.0%'}
           loading={isStatsLoading} 
         />
       </div>

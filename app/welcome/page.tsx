@@ -98,36 +98,36 @@ const WelcomePage = () => {
             />
 
             <motion.h1
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
             >
               {slides[currentSlide].title}
             </motion.h1>
 
             <motion.p 
               className="card-p1"
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
             >
               {slides[currentSlide].subtitle}
             </motion.p>
 
             <motion.p 
               className="card-p2"
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
             >
               {slides[currentSlide].description}
             </motion.p>
 
             <motion.div 
               className="btn-con"
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
+              transition={{ delay: 0.25, duration: 0.3 }}
             >
               {currentSlide === 0 && (
                 <>
@@ -190,10 +190,10 @@ const WelcomePage = () => {
           <motion.p 
             key={`intro-${currentSlide}`}
             className="intro"
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ delay: 0.05, duration: 0.25 }}
           >
             {slides[currentSlide].intro}
           </motion.p>
