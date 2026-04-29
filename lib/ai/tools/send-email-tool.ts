@@ -44,7 +44,7 @@ async function sendViaGmail(
 
   // Get sender email from auth record
   const auth = await getConnectorByUserAndProvider({ userId, provider: "google" });
-  const senderEmail = auth?.accountEmail;
+  const senderEmail = auth?.accountEmail ?? undefined;
 
   const rawEmail = buildGmailRaw(to, subject, body, senderEmail);
   const payload: any = { raw: rawEmail };
