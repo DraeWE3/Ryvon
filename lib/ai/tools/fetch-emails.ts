@@ -56,7 +56,7 @@ async function fetchGmailMessages(
 
   // Fetch details for each message in parallel
   const emailDetails = await Promise.allSettled(
-    messages.slice(0, limit).map(async (msg: any) => {
+    messages.slice(0, limit).map(async (msg: any): Promise<EmailResult | null> => {
       const detailResult = await googleFetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
         userId
