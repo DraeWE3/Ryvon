@@ -168,7 +168,6 @@ export default function SettingsPage() {
               </div>
               <input 
                 type="file" 
-                type="file" 
                 accept="image/*" 
                 className="hidden" 
                 ref={fileInputRef} 
