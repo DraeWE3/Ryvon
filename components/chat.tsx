@@ -245,7 +245,7 @@ export function Chat({
                  )}
 
                  {messages.length === 0 && (
-                   <div className="chat-anim-item mt-4 mb-2 w-full flex justify-center">
+                   <div className="chat-anim-item w-full flex justify-center">
                      <ChatActionButtons />
                    </div>
                  )}

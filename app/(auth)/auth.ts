@@ -3,7 +3,7 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import type { DefaultJWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { DUMMY_PASSWORD } from "@/lib/constants";
+import { getDummyPassword } from "@/lib/constants";
 import { createGuestUser, getUser, upsertGoogleUser } from "@/lib/db/queries";
 import { authConfig } from "./auth.config";
 
@@ -61,14 +61,14 @@ export const {
         const users = await getUser(email);
 
         if (users.length === 0) {
-          await compare(password, DUMMY_PASSWORD);
+          await compare(password, getDummyPassword());
           return null;
         }
 
         const [user] = users;
 
         if (!user.password) {
-          await compare(password, DUMMY_PASSWORD);
+          await compare(password, getDummyPassword());
           return null;
         }
 

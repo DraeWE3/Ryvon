@@ -19,13 +19,16 @@ export default function Page(props: { params: Promise<{ id: string }> }) {
 
 async function ChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const chat = await getChatById({ id });
+  
+  // Run independent lookups in parallel instead of sequentially
+  const [chat, session] = await Promise.all([
+    getChatById({ id }),
+    auth(),
+  ]);
 
   if (!chat) {
     notFound();
   }
-
-  const session = await auth();
 
   if (!session) {
     redirect("/api/auth/guest");

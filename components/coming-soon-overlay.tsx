@@ -5,7 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function ComingSoonOverlay({ children }: { children: React.ReactNode }) {
-  const [isLocked, setIsLocked] = useState(true);
+  // Start unlocked if localStorage says so — avoids flash of overlay
+  const [isLocked, setIsLocked] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ryvon_unlocked') !== 'true';
+    }
+    return true;
+  });
   const [password, setPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState('');
@@ -13,6 +19,7 @@ export default function ComingSoonOverlay({ children }: { children: React.ReactN
 
   useEffect(() => {
     setMounted(true);
+    // Double-check localStorage on mount (SSR safety)
     const unlocked = localStorage.getItem('ryvon_unlocked');
     if (unlocked === 'true') {
       setIsLocked(false);

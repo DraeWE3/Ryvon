@@ -363,17 +363,9 @@ export default function ConnectorsPage() {
   const containerRef = React.useRef<HTMLDivElement>(null)
 
   useGSAP(() => {
-    if (containerRef.current) {
-      // Set initial state via GSAP so it's visible if JS fails
-      gsap.set(containerRef.current, { opacity: 0 });
-      
-      if (connectors && connectors.length > 0) {
-        gsap.to(containerRef.current, { opacity: 1, duration: 0.5 });
-        containerSequence(containerRef.current.querySelector('.header-seq') as Element, ".connector-card-item", 0.02)
-      } else if (!isLoading) {
-        // Show even if empty
-        gsap.to(containerRef.current, { opacity: 1, duration: 0.5 });
-      }
+    if (containerRef.current && !isLoading && connectors && connectors.length > 0) {
+      // Animate the cards entering once they are loaded and rendered
+      staggerReveal(".connector-card-item");
     }
   }, { scope: containerRef, dependencies: [connectors, isLoading] })
 

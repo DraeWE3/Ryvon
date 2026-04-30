@@ -25,7 +25,13 @@ export default function Page() {
     }
   );
 
-  const { update: updateSession } = useSession();
+  const { data: session, status: sessionStatus, update: updateSession } = useSession();
+
+  useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      router.push("/");
+    }
+  }, [sessionStatus, router]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -50,9 +56,42 @@ export default function Page() {
     }
   }, [state.status, router, updateSession]);
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    nextAuthSignIn("google", { callbackUrl: "/" });
+    
+    try {
+      // Securely fetch the NextAuth CSRF token
+      const res = await fetch("/api/auth/csrf");
+      const { csrfToken } = await res.json();
+
+      // Create a hidden form to submit a POST request in a new tab
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "/api/auth/signin/google";
+      form.target = "_blank";
+
+      const csrfInput = document.createElement("input");
+      csrfInput.type = "hidden";
+      csrfInput.name = "csrfToken";
+      csrfInput.value = csrfToken;
+      form.appendChild(csrfInput);
+
+      const callbackInput = document.createElement("input");
+      callbackInput.type = "hidden";
+      callbackInput.name = "callbackUrl";
+      callbackInput.value = window.location.origin + "/";
+      form.appendChild(callbackInput);
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+      
+      // Stop loading spinner after 5 seconds in case they close the tab
+      setTimeout(() => setIsGoogleLoading(false), 5000);
+    } catch (error) {
+      console.error("Failed to start Google auth:", error);
+      setIsGoogleLoading(false);
+    }
   };
 
   const motionProps = isMounted

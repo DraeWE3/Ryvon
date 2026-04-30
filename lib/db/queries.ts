@@ -48,7 +48,11 @@ import { generateHashedPassword } from "./utils";
 // https://authjs.dev/reference/adapter/drizzle
 
 // biome-ignore lint: Forbidden non-null assertion.
-const client = postgres(process.env.POSTGRES_URL!);
+const client = postgres(process.env.POSTGRES_URL!, {
+  max: 10,               // Max concurrent connections
+  idle_timeout: 20,       // Close idle connections after 20s
+  connect_timeout: 10,    // Fail fast if DB unreachable
+});
 export const db = drizzle(client);
 
 export async function getUser(email: string): Promise<User[]> {
@@ -113,7 +117,8 @@ export async function upsertGoogleUser(
 
 export async function createGuestUser() {
   const email = `guest-${Date.now()}`;
-  const password = generateHashedPassword(generateUUID());
+  // Guests never login with passwords — skip expensive bcrypt hash
+  const password = `guest_${generateUUID()}`;
 
   try {
     return await db.insert(user).values({ email, password }).returning({
@@ -973,20 +978,22 @@ export async function getWorkflowStats({ userId }: { userId: string }) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [runsToday] = await db
-      .select({ count: count(workflowRun.id) })
-      .from(workflowRun)
-      .where(
-        and(
-          eq(workflowRun.userId, userId),
-          gte(workflowRun.startedAt, todayStart)
-        )
-      );
-
-    const [totalRuns] = await db
-      .select({ count: count(workflowRun.id) })
-      .from(workflowRun)
-      .where(eq(workflowRun.userId, userId));
+    // Run both COUNT queries in parallel instead of sequentially
+    const [[runsToday], [totalRuns]] = await Promise.all([
+      db
+        .select({ count: count(workflowRun.id) })
+        .from(workflowRun)
+        .where(
+          and(
+            eq(workflowRun.userId, userId),
+            gte(workflowRun.startedAt, todayStart)
+          )
+        ),
+      db
+        .select({ count: count(workflowRun.id) })
+        .from(workflowRun)
+        .where(eq(workflowRun.userId, userId)),
+    ]);
 
     return {
       runs_today: runsToday?.count ?? 0,
@@ -1056,31 +1063,7 @@ export async function upsertConnectorAuth(data: {
   metadata?: any;
 }) {
   try {
-    // Check if exists
-    const existing = await getConnectorByUserAndProvider({
-      userId: data.userId,
-      provider: data.provider,
-    });
-
-    if (existing) {
-      const [result] = await db
-        .update(connectorAuth)
-        .set({
-          accessToken: data.accessToken,
-          refreshToken: data.refreshToken ?? existing.refreshToken,
-          tokenType: data.tokenType ?? existing.tokenType,
-          scope: data.scope ?? existing.scope,
-          expiresAt: data.expiresAt ?? existing.expiresAt,
-          accountEmail: data.accountEmail ?? existing.accountEmail,
-          accountName: data.accountName ?? existing.accountName,
-          metadata: data.metadata ?? existing.metadata,
-          updatedAt: new Date(),
-        })
-        .where(eq(connectorAuth.id, existing.id))
-        .returning();
-      return result;
-    }
-
+    // Single atomic upsert — replaces the old SELECT + INSERT/UPDATE pattern (2 queries → 1)
     const [result] = await db
       .insert(connectorAuth)
       .values({
@@ -1094,6 +1077,20 @@ export async function upsertConnectorAuth(data: {
         accountEmail: data.accountEmail,
         accountName: data.accountName,
         metadata: data.metadata,
+      })
+      .onConflictDoUpdate({
+        target: [connectorAuth.userId, connectorAuth.provider],
+        set: {
+          accessToken: sql`COALESCE(${data.accessToken}, ${connectorAuth.accessToken})`,
+          refreshToken: sql`COALESCE(${data.refreshToken ?? null}, ${connectorAuth.refreshToken})`,
+          tokenType: sql`COALESCE(${data.tokenType ?? null}, ${connectorAuth.tokenType})`,
+          scope: sql`COALESCE(${data.scope ?? null}, ${connectorAuth.scope})`,
+          expiresAt: data.expiresAt ?? sql`${connectorAuth.expiresAt}`,
+          accountEmail: sql`COALESCE(${data.accountEmail ?? null}, ${connectorAuth.accountEmail})`,
+          accountName: sql`COALESCE(${data.accountName ?? null}, ${connectorAuth.accountName})`,
+          metadata: data.metadata ? sql`${data.metadata}` : sql`${connectorAuth.metadata}`,
+          updatedAt: new Date(),
+        },
       })
       .returning();
     return result;
