@@ -362,12 +362,6 @@ export default function ConnectorsPage() {
 
   const containerRef = React.useRef<HTMLDivElement>(null)
 
-  useGSAP(() => {
-    if (containerRef.current && !isLoading && connectors && connectors.length > 0) {
-      // Animate the cards entering once they are loaded and rendered
-      staggerReveal(".connector-card-item");
-    }
-  }, { scope: containerRef, dependencies: [connectors, isLoading] })
 
   return (
     <div ref={containerRef} className="flex h-full flex-col bg-transparent p-8 overflow-y-auto workflow-bg relative">
