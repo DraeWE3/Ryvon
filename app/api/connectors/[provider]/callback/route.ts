@@ -125,6 +125,9 @@ export async function GET(
 ) {
   const { provider } = await params
   const { searchParams } = new URL(request.url)
+  const rawUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const baseUrl = rawUrl.replace(/\/$/, '')
+  const redirectUri = `${baseUrl}/api/connectors/${provider}/callback`
 
   const code = searchParams.get('code')
   const stateParam = searchParams.get('state')
@@ -158,10 +161,7 @@ export async function GET(
     return NextResponse.redirect(`${baseUrl}/workflows/connectors?error=not_configured`)
   }
 
-  // Sanitize base URL — must match exactly what was sent in the auth step
-  const rawUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-  const baseUrl = rawUrl.replace(/\/$/, '')
-  const redirectUri = `${baseUrl}/api/connectors/${provider}/callback`
+
 
   try {
     // Exchange code for tokens
