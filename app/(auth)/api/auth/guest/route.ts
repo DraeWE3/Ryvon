@@ -14,7 +14,9 @@ export async function GET(request: Request) {
   });
 
   if (token) {
-    return NextResponse.redirect(new URL("/", request.url));
+    const rawUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = rawUrl.replace(/\/$/, "");
+    return NextResponse.redirect(`${baseUrl}/`);
   }
 
   return signIn("guest", { redirect: true, redirectTo: redirectUrl });

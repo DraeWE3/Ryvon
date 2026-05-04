@@ -131,15 +131,11 @@ export async function GET(
   const error = searchParams.get('error')
 
   if (error) {
-    return NextResponse.redirect(
-      new URL(`/workflows/connectors?error=${encodeURIComponent(error)}`, request.url)
-    )
+    return NextResponse.redirect(`${baseUrl}/workflows/connectors?error=${encodeURIComponent(error)}`)
   }
 
   if (!code || !stateParam) {
-    return NextResponse.redirect(
-      new URL('/workflows/connectors?error=missing_code', request.url)
-    )
+    return NextResponse.redirect(`${baseUrl}/workflows/connectors?error=missing_code`)
   }
 
   // Decode state
@@ -147,25 +143,19 @@ export async function GET(
   try {
     state = JSON.parse(Buffer.from(stateParam, 'base64url').toString())
   } catch {
-    return NextResponse.redirect(
-      new URL('/workflows/connectors?error=invalid_state', request.url)
-    )
+    return NextResponse.redirect(`${baseUrl}/workflows/connectors?error=invalid_state`)
   }
 
   const config = OAUTH_PROVIDERS[provider]
   if (!config) {
-    return NextResponse.redirect(
-      new URL(`/workflows/connectors?error=unknown_provider`, request.url)
-    )
+    return NextResponse.redirect(`${baseUrl}/workflows/connectors?error=unknown_provider`)
   }
 
   const clientId = process.env[config.clientIdEnv]
   const clientSecret = process.env[config.clientSecretEnv]
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(
-      new URL('/workflows/connectors?error=not_configured', request.url)
-    )
+    return NextResponse.redirect(`${baseUrl}/workflows/connectors?error=not_configured`)
   }
 
   // Sanitize base URL — must match exactly what was sent in the auth step
@@ -211,9 +201,7 @@ export async function GET(
 
     if (!tokenRes.ok || tokenData.error) {
       console.error(`Token exchange failed for ${provider}:`, tokenData)
-      return NextResponse.redirect(
-        new URL(`/workflows/connectors?error=token_exchange_failed`, request.url)
-      )
+      return NextResponse.redirect(`${baseUrl}/workflows/connectors?error=token_exchange_failed`)
     }
 
     // Extract access token (varies by provider)
@@ -263,13 +251,9 @@ export async function GET(
       },
     })
 
-    return NextResponse.redirect(
-      new URL(`/workflows/connectors?connected=${provider}`, request.url)
-    )
+    return NextResponse.redirect(`${baseUrl}/workflows/connectors?connected=${provider}`)
   } catch (err: any) {
     console.error('OAuth callback error:', err)
-    return NextResponse.redirect(
-      new URL(`/workflows/connectors?error=${encodeURIComponent(err.message)}`, request.url)
-    )
+    return NextResponse.redirect(`${baseUrl}/workflows/connectors?error=${encodeURIComponent(err.message)}`)
   }
 }
