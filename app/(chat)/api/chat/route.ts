@@ -254,11 +254,11 @@ export async function POST(request: Request) {
 
     // Extract attachments from parts for database persistence
     const attachments = message.parts
-      .filter((part) => part.type === "file" || part.type === "image")
-      .map((part) => ({
-        url: part.url || (part as any).image,
-        name: (part as any).name ?? 'attachment',
-        contentType: part.mediaType || (part as any).mimeType,
+      .filter((part: any) => part.type === "file" || part.type === "image")
+      .map((part: any) => ({
+        url: part.url || part.image,
+        name: part.name ?? 'attachment',
+        contentType: part.mediaType || part.mimeType,
       }));
 
     await saveMessages({
@@ -427,11 +427,11 @@ export async function POST(request: Request) {
         await saveMessages({
           messages: messages.map((currentMessage) => {
             const attachments = currentMessage.parts
-              .filter((part) => part.type === "file")
-              .map((part) => ({
-                url: part.url,
-                name: (part as any).name ?? 'attachment',
-                contentType: part.mediaType,
+              .filter((part: any) => part.type === "file" || part.type === "image")
+              .map((part: any) => ({
+                url: part.url || part.image,
+                name: part.name ?? 'attachment',
+                contentType: part.mediaType || part.mimeType,
               }));
 
             return {
