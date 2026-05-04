@@ -87,7 +87,7 @@ export async function getValidGoogleToken(userId: string, force = false): Promis
       });
 
       console.log("[Google Token] Successfully refreshed access token");
-      return { accessToken: refreshData.access_token, auth: updated };
+      return { accessToken: refreshData.access_token, auth: updated as ConnectorAuth };
     } catch (err) {
       console.error("[Google Token] Exception during refresh:", err);
       return { accessToken: auth.accessToken, auth };
