@@ -124,7 +124,7 @@ const DotGrid: React.FC<DotGridProps> = ({
     const startX = extraX / 2 + dotSize / 2;
     const startY = extraY / 2 + dotSize / 2;
 
-    const dots = [];
+    const dots: any[] = [];
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
         const cx = startX + x * cell;

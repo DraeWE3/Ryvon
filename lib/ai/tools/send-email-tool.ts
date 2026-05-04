@@ -179,7 +179,7 @@ async function sendViaOutlook(
 // ── Attachment Processor ──────────────────────────────────────────────────────
 
 async function processAttachments(attachments?: {url: string, name: string, contentType?: string}[]): Promise<{name: string, contentType: string, dataBase64: string}[]> {
-  const processed = [];
+  const processed: {name: string, contentType: string, dataBase64: string}[] = [];
   if (!attachments) return processed;
   
   for (const att of attachments) {
