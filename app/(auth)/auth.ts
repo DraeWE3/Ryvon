@@ -91,6 +91,7 @@ export const {
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async signIn({ user, account }) {
       // For Google sign-ins, upsert the user in our DB
       if (account?.provider === "google" && user.email) {
