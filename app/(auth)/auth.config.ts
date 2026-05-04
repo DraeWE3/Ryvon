@@ -10,6 +10,37 @@ export const authConfig = {
     // while this file is also used in non-Node.js environments
   ],
   callbacks: {
+    jwt({ token, user, trigger, session }) {
+      if (user) {
+        token.id = user.id as string;
+        token.type = user.type;
+        token.name = user.name;
+        token.image = user.image;
+        token.companyName = user.companyName;
+        token.timezone = user.timezone;
+      }
+      if (trigger === "update" && session) {
+        if (session.name !== undefined) token.name = session.name;
+        if (session.email !== undefined) token.email = session.email;
+        if (session.companyName !== undefined) token.companyName = session.companyName;
+        if (session.timezone !== undefined) token.timezone = session.timezone;
+        if (session.image !== undefined) token.image = session.image;
+      }
+
+      return token;
+    },
+    session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id;
+        session.user.type = token.type;
+        session.user.name = token.name;
+        session.user.image = token.image as string | null | undefined;
+        session.user.companyName = token.companyName;
+        session.user.timezone = token.timezone;
+      }
+
+      return session;
+    },
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isGuest = auth?.user?.type === "guest";
@@ -21,28 +52,21 @@ export const authConfig = {
         nextUrl.pathname.startsWith("/welcome") ||
         nextUrl.pathname.startsWith("/api/auth");
 
-      // Always allow public pages
       if (isPublicPage) {
-        // Only redirect away from login/register if they are a REAL logged in user
-        // Guest users SHOULD be allowed to see login/register pages
         if (isRealUser && (nextUrl.pathname.startsWith("/login") || nextUrl.pathname.startsWith("/register"))) {
           return Response.redirect(new URL("/", nextUrl));
         }
         return true;
       }
 
-      // Protected pages need real login (not guest)
       const isProtectedPage =
         nextUrl.pathname.startsWith("/settings") ||
         nextUrl.pathname.startsWith("/workflows/connectors");
 
       if (isProtectedPage) {
-        // If not logged in or is a guest, this will return false
-        // NextAuth middleware automatically redirects to signIn page if authorized returns false
         return isRealUser;
       }
 
-      // All other pages — allow everyone through (guest sessions created at page level)
       return true;
     },
   },

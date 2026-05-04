@@ -114,37 +114,6 @@ export const {
       }
       return true;
     },
-    jwt({ token, user, trigger, session }) {
-      if (user) {
-        token.id = user.id as string;
-        token.type = user.type;
-        token.name = user.name;
-        token.image = user.image;
-        token.companyName = user.companyName;
-        token.timezone = user.timezone;
-      }
-      if (trigger === "update" && session) {
-        if (session.name !== undefined) token.name = session.name;
-        if (session.email !== undefined) token.email = session.email;
-        if (session.companyName !== undefined) token.companyName = session.companyName;
-        if (session.timezone !== undefined) token.timezone = session.timezone;
-        if (session.image !== undefined) token.image = session.image;
-      }
-
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id;
-        session.user.type = token.type;
-        session.user.name = token.name;
-        session.user.image = token.image as string | null | undefined;
-        session.user.companyName = token.companyName;
-        session.user.timezone = token.timezone;
-      }
-
-      return session;
-    },
   },
 });
 
