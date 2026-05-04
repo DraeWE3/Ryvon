@@ -14,9 +14,7 @@ import { Skeleton } from '@/features/workflows/components/Skeleton'
 import { ConfirmModal } from '@/features/workflows/components/ConfirmModal'
 import { RunDetailDrawer } from '@/features/workflows/drawers/RunDetailDrawer'
 import { WorkflowToggle } from '@/features/workflows/components/WorkflowToggle'
-import Play from 'lucide-react/dist/esm/icons/play'
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
-import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import { Play, Trash2, ChevronLeft } from 'lucide-react'
 import type { Step } from '@/features/workflows/types/workflow'
 
 export function WorkflowDetailClient({ id }: { id: string }) {
