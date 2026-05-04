@@ -20,20 +20,7 @@ import type { Step } from '@/features/workflows/types/workflow'
 export function WorkflowDetailClient({ id }: { id: string }) {
   const router = useRouter()
 
-  // ─── LOCAL HEARTBEAT ───
-  // While this page is open in development, automatically ping the cron endpoint
-  // every 30 seconds to simulate a live production background checker.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetch('/api/cron/workflows').catch(console.error)
-    }, 30000)
-    
-    // Immediate ping on mount
-    fetch('/api/cron/workflows').catch(console.error)
-    
-    return () => clearInterval(interval)
-  }, [])
-  
+
   const { data: workflow, isLoading, isError } = useWorkflowDetail(id)
   const { data: runs, isLoading: isRunsLoading, isError: isRunsError } = useWorkflowRuns(id)
   

@@ -26,7 +26,7 @@ const ICON_SLUGS: Record<string, string> = {
   jira: 'jira',
   'google-drive': 'googledrive',
   dropbox: 'dropbox',
-  'microsoft-365': 'microsoftoutlook',
+  'microsoft-365': 'microsoft365',
   hubspot: 'hubspot',
   salesforce: 'salesforce',
   pipedrive: 'pipedrive',
@@ -76,9 +76,9 @@ function ConnectorIcon({ id, name }: { id: string; name: string }) {
   }
 
   return (
-    <div className="w-9 h-9 rounded-[8px] bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0 p-[7px]">
+    <div className="w-9 h-9 rounded-[8px] bg-white flex items-center justify-center flex-shrink-0 p-[7px] shadow-sm">
       <img
-        src={`https://cdn.simpleicons.org/${slug}/ffffff`}
+        src={`https://cdn.simpleicons.org/${slug}`}
         alt={name}
         className="w-full h-full object-contain"
         onError={() => setErrored(true)}

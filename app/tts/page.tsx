@@ -136,7 +136,8 @@ export default function TextToSpeechPage() {
       <style jsx>{`
         .tts-page-container {
           display: flex;
-          min-height: 100dvh;
+          height: 100dvh;
+          overflow: hidden;
           background: #000;
         }
 

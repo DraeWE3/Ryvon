@@ -240,7 +240,15 @@ async function executeGoogleSheetsStep(step: any, token: string, previousOutputs
   
   if (step.params?.values) {
     // Explicit values provided
-    values = Array.isArray(step.params.values) ? step.params.values : [[String(step.params.values)]]
+    if (Array.isArray(step.params.values)) {
+      if (step.params.values.length > 0 && Array.isArray(step.params.values[0])) {
+        values = step.params.values
+      } else {
+        values = [step.params.values]
+      }
+    } else {
+      values = [[String(step.params.values)]]
+    }
   } else if (previousOutputs.length > 0) {
     const lastOutput = previousOutputs[previousOutputs.length - 1]
     const timestamp = new Date().toLocaleString()

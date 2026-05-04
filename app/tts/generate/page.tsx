@@ -565,7 +565,8 @@ export default function TTSGeneratePage() {
       <style jsx>{`
         .tts-generate-page {
           display: flex;
-          min-height: 100dvh;
+          height: 100dvh;
+          overflow: hidden;
           background-image: url('${bgMod.src}');
           background-position: center;
           background-repeat: no-repeat;
