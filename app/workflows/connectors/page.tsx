@@ -280,7 +280,7 @@ function ConnectorCardItem({
   )
 }
 
-export default function ConnectorsPage() {
+function ConnectorsContent() {
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -591,6 +591,28 @@ export default function ConnectorsPage() {
         message={notifModal.message}
       />
     </div>
+  )
+}
+
+import { Suspense } from 'react'
+
+export default function ConnectorsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full flex-col bg-transparent p-8 overflow-y-auto workflow-bg relative">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 animate-pulse">
+          <div className="h-20 w-64 bg-white/5 rounded-lg" />
+          <div className="h-10 w-48 bg-white/5 rounded-full" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.08)] rounded-[12px] p-5 h-[180px] animate-pulse" />
+          ))}
+        </div>
+      </div>
+    }>
+      <ConnectorsContent />
+    </Suspense>
   )
 }
 
