@@ -32,6 +32,8 @@ import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { staggerReveal } from '@/lib/animations/timelines';
 import { ComingSoonModal } from '@/components/coming-soon-modal';
+import { useSession } from 'next-auth/react';
+import { toast } from 'react-hot-toast';
 
 interface Contact {
   name: string;
@@ -66,7 +68,7 @@ interface RecentCallLog {
 const DEFAULT_ASSISTANT_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || '50987159-147b-46d8-b5ec-9b530c673dd4';
 
 export default function AICallAgent() {
-
+  const { data: session } = useSession();
   const { toggleSidebar } = useSidebar();
   const [mounted, setMounted] = useState(false);
   
@@ -470,6 +472,11 @@ export default function AICallAgent() {
   };
 
   const handleStartCall = async () => {
+    if (session?.user?.type === 'guest') {
+      toast.error('Sign in to start intelligent calls!');
+      router.push('/register');
+      return;
+    }
     setErrorMessage('');
 
     if (!phoneNumber) {
@@ -666,6 +673,11 @@ export default function AICallAgent() {
   };
 
   const handleGeneratePrompt = async () => {
+    if (session?.user?.type === 'guest') {
+      toast.error('Sign in to generate intelligent prompts!');
+      router.push('/register');
+      return;
+    }
     if (!promptDescription) {
       setErrorMessage('Please enter a description for the AI to generate a prompt');
       return;

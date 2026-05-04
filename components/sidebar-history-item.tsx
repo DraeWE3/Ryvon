@@ -60,16 +60,20 @@ const PureChatItem = ({
           </button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" side="bottom">
+        <DropdownMenuContent 
+          align="end" 
+          side="bottom"
+          className="bg-[#0A0A0A]/85 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 min-w-[180px] shadow-[0_10px_40px_rgba(0,0,0,0.6)] font-motive text-white"
+        >
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="cursor-pointer">
+            <DropdownMenuSubTrigger className="cursor-pointer flex items-center gap-3 hover:bg-white/10 focus:bg-white/10 rounded-xl px-3 py-2.5 text-[13.5px] text-white/90 data-[state=open]:bg-white/10 transition-colors duration-200">
               <ShareIcon />
               <span>Share</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
-              <DropdownMenuSubContent>
+              <DropdownMenuSubContent className="bg-[#0A0A0A]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 min-w-[160px] shadow-[0_10px_40px_rgba(0,0,0,0.6)] font-motive text-white">
                 <DropdownMenuItem
-                  className="cursor-pointer flex-row justify-between"
+                  className="cursor-pointer flex flex-row items-center justify-between hover:bg-white/10 focus:bg-white/10 rounded-xl px-3 py-2.5 text-[13.5px] text-white/90 transition-colors duration-200"
                   onClick={() => {
                     setVisibilityType("private");
                   }}
@@ -83,7 +87,7 @@ const PureChatItem = ({
                   ) : null}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="cursor-pointer flex-row justify-between"
+                  className="cursor-pointer flex flex-row items-center justify-between hover:bg-white/10 focus:bg-white/10 rounded-xl px-3 py-2.5 text-[13.5px] text-white/90 transition-colors duration-200"
                   onClick={() => {
                     setVisibilityType("public");
                   }}
@@ -99,7 +103,7 @@ const PureChatItem = ({
           </DropdownMenuSub>
 
           <DropdownMenuItem
-            className="cursor-pointer text-destructive focus:bg-destructive/15 focus:text-destructive dark:text-red-500"
+            className="cursor-pointer flex items-center gap-3 hover:bg-[#ff3333] focus:bg-[#ff3333] hover:text-white focus:text-white text-[#ff4444] rounded-xl px-3 py-2.5 text-[13.5px] mt-1 transition-all duration-200"
             onSelect={() => onDelete(chat.id)}
           >
             <TrashIcon />

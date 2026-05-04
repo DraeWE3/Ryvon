@@ -5,7 +5,7 @@ import { auth } from "@/app/(auth)/auth";
 // POST /api/workflows/manual — create a workflow with manually defined steps (no AI)
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session?.user?.id || session.user.type === "guest") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -1,25 +1,24 @@
-import Form from "next/form";
+"use client";
 
-import { signOut } from "@/app/(auth)/auth";
+import { useState } from "react";
+import { signOut } from "next-auth/react";
 
 export const SignOutForm = () => {
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  
   return (
-    <Form
-      action={async () => {
-        "use server";
-
+    <button
+      className="w-full px-1 py-0.5 text-left text-red-500 disabled:opacity-50"
+      type="button"
+      disabled={isSigningOut}
+      onClick={async () => {
+        setIsSigningOut(true);
         await signOut({
-          redirectTo: "/",
+          callbackUrl: "/",
         });
       }}
-      className="w-full"
     >
-      <button
-        className="w-full px-1 py-0.5 text-left text-red-500"
-        type="submit"
-      >
-        Sign out
-      </button>
-    </Form>
+      {isSigningOut ? "Signing out..." : "Sign out"}
+    </button>
   );
 };

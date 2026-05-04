@@ -6,7 +6,7 @@ export async function DELETE() {
   try {
     const session = await auth();
 
-    if (!session || !session.user || session.user.id === "guest") {
+    if (!session || !session.user || session.user.type === "guest") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

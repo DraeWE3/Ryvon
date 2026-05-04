@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 // POST /api/workflows — generate a workflow from natural language using AI, then save it
 export async function POST(request: NextRequest) {
   const session = await auth()
-  if (!session?.user?.id) {
+  if (!session?.user?.id || session.user.type === "guest") {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

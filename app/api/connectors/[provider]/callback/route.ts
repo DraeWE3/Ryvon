@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { upsertConnectorAuth } from '@/lib/db/queries'
 import { OAUTH_PROVIDERS } from '@/lib/connectors/providers'
 
+// Bypass SSL verification in local development to fix fetch TLS errors
+if (process.env.NODE_ENV !== 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 // User info endpoints for each provider (to get display name/email)
 const USER_INFO_FETCHERS: Record<string, (accessToken: string) => Promise<{ email: string; name: string }>> = {
   google: async (token) => {

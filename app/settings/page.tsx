@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AuthNotificationModal, type AuthNotificationType } from "@/components/auth-notification-modal";
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession();
@@ -33,6 +34,19 @@ export default function SettingsPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    type: AuthNotificationType;
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,26 +127,34 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm("Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently delete all your chats.")) {
-      return;
-    }
+    setModalState({
+      isOpen: true,
+      type: "error",
+      title: "Delete Account",
+      message: "Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently delete all your chats.",
+      onConfirm: async () => {
+        setIsDeleting(true);
+        try {
+          const res = await fetch("/api/settings/account", {
+            method: "DELETE"
+          });
 
-    setIsDeleting(true);
-    try {
-      const res = await fetch("/api/settings/account", {
-        method: "DELETE"
-      });
-
-      if (!res.ok) throw new Error("Failed to delete account");
-      
-      signOut({ callbackUrl: "/" });
-    } catch (err) {
-      console.error(err);
-      setIsDeleting(false);
-    }
+          if (!res.ok) throw new Error("Failed to delete account");
+          
+          signOut({ callbackUrl: "/" });
+        } catch (err) {
+          console.error(err);
+          setIsDeleting(false);
+          setModalState({ isOpen: true, type: "error", title: "Error", message: "Failed to delete account. Please try again later." });
+        }
+      }
+    });
   };
 
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
   const handleSignOut = () => {
+    setIsSigningOut(true);
     signOut({ callbackUrl: "/login" });
   };
 
@@ -204,10 +226,11 @@ export default function SettingsPage() {
               </button>
               <button 
                 onClick={handleSignOut}
-                className="px-6 py-2 rounded-full border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 hover:border-red-500/50 transition-all flex items-center gap-2 cursor-pointer"
+                disabled={isSigningOut}
+                className="px-6 py-2 rounded-full border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 hover:border-red-500/50 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <LogOut className="w-4 h-4" />
-                Sign Out
+                {isSigningOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                {isSigningOut ? "Signing Out..." : "Sign Out"}
               </button>
             </div>
           </div>
@@ -450,6 +473,16 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <AuthNotificationModal
+        isOpen={modalState.isOpen}
+        onClose={() => setModalState(prev => ({ ...prev, isOpen: false }))}
+        type={modalState.type}
+        title={modalState.title}
+        message={modalState.message}
+        onConfirm={modalState.onConfirm}
+        confirmText="Confirm Delete"
+      />
     </div>
   );
 }

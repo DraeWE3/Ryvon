@@ -159,7 +159,7 @@ export async function POST(request: Request) {
       differenceInHours: 24,
     });
 
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
+    if (messageCount >= entitlementsByUserType[userType].maxMessagesPerDay) {
       return new ChatSDKError("rate_limit:chat").toResponse();
     }
 
@@ -254,11 +254,11 @@ export async function POST(request: Request) {
 
     // Extract attachments from parts for database persistence
     const attachments = message.parts
-      .filter((part) => part.type === "file")
+      .filter((part) => part.type === "file" || part.type === "image")
       .map((part) => ({
-        url: part.url,
+        url: part.url || (part as any).image,
         name: (part as any).name ?? 'attachment',
-        contentType: part.mediaType,
+        contentType: part.mediaType || (part as any).mimeType,
       }));
 
     await saveMessages({
@@ -375,7 +375,7 @@ export async function POST(request: Request) {
             manageWorkflows: manageWorkflows({ session }),
             checkConnectors: checkConnectors({ session }),
             fetchEmails: fetchEmails({ session }),
-            sendEmailTool: sendEmailTool({ session }),
+            sendEmailTool: sendEmailTool({ session, attachments }),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

@@ -47,6 +47,12 @@ export function CreateWorkflowDrawer({ onWorkflowCreated }: { onWorkflowCreated?
   if (!isCreateDrawerOpen) return null
 
   const handleGenerate = () => {
+    if (session?.user?.type === 'guest') {
+      toast.error('Sign in to generate intelligent workflows!')
+      router.push('/register')
+      setCreateDrawerOpen(false)
+      return
+    }
     if (!input.trim()) return
     setStep(2)
     generateWorkflow(input, {
@@ -172,6 +178,12 @@ export function CreateWorkflowDrawer({ onWorkflowCreated }: { onWorkflowCreated?
                 <h3 className="text-[22px] text-white font-gate font-bold mb-6 tracking-wide">Build Manually</h3>
                 <button
                   onClick={() => {
+                    if (session?.user?.type === 'guest') {
+                      toast.error('Sign in to build custom automations!')
+                      router.push('/register')
+                      setCreateDrawerOpen(false)
+                      return
+                    }
                     setCreateDrawerOpen(false)
                     router.push('/workflows/new')
                   }}

@@ -26,10 +26,10 @@ export function ConfirmModal({ open, title, message, onConfirm, onCancel, loadin
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-[rgba(0,0,0,0.70)] transition-opacity" 
+        className="fixed inset-0 bg-[rgba(0,0,0,0.40)] backdrop-blur-sm transition-opacity" 
         onClick={loading ? undefined : onCancel}
       />
       
@@ -39,17 +39,17 @@ export function ConfirmModal({ open, title, message, onConfirm, onCancel, loadin
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="relative z-[101] w-full max-w-[400px] rounded-[12px] border border-[rgba(255,255,255,0.15)] bg-[#000] p-[24px] shadow-xl"
+        className="relative z-[501] w-full max-w-[440px] rounded-[24px] border border-[rgba(255,255,255,0.10)] bg-[#000]/80 backdrop-blur-3xl p-8 shadow-[0_30px_60px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300"
       >
-        <h2 id="modal-title" className="font-gate text-[16px] text-[#ffffff] mb-2">{title}</h2>
-        <p className="font-motive text-[13px] text-[rgba(255,255,255,0.50)]">{message}</p>
+        <h2 id="modal-title" className="font-gate text-[20px] text-white font-semibold mb-3 tracking-tight">{title}</h2>
+        <p className="font-motive text-[14px] text-[rgba(255,255,255,0.50)] leading-relaxed mb-8">{message}</p>
         
-        <div className="mt-[20px] flex flex-row items-center justify-end gap-[8px]">
+        <div className="flex flex-row items-center justify-end gap-3">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="font-motive rounded-[8px] border border-[rgba(255,255,255,0.15)] bg-transparent px-[16px] py-[8px] text-[#ffffff] hover:bg-[rgba(255,255,255,0.05)] disabled:opacity-50"
+            className="font-motive text-[13px] font-medium rounded-full border border-[rgba(255,255,255,0.10)] bg-transparent px-6 py-2.5 text-white hover:bg-[rgba(255,255,255,0.05)] transition-all disabled:opacity-50"
           >
             Cancel
           </button>
@@ -57,15 +57,12 @@ export function ConfirmModal({ open, title, message, onConfirm, onCancel, loadin
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="flex items-center justify-center font-motive rounded-[8px] bg-[rgba(220,50,50,0.85)] px-[16px] py-[8px] text-[#ffffff] hover:bg-[rgba(220,50,50,1)] disabled:opacity-50 min-w-[80px]"
+            className="flex items-center justify-center font-motive text-[13px] font-bold rounded-full bg-red-500/90 hover:bg-red-500 px-8 py-2.5 text-white transition-all disabled:opacity-50 shadow-lg shadow-red-500/20"
           >
             {loading ? (
-              <svg className="h-[14px] w-[14px] animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <div className="h-4 w-4 animate-spin border-2 border-white/20 border-t-white rounded-full" />
             ) : (
-              'Delete'
+              'Confirm'
             )}
           </button>
         </div>

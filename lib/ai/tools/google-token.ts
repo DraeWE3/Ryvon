@@ -6,6 +6,10 @@
 import { getConnectorByUserAndProvider, upsertConnectorAuth } from "@/lib/db/queries";
 import type { ConnectorAuth } from "@/lib/db/schema";
 
+if (process.env.NODE_ENV !== "production") {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
+
 interface ValidToken {
   accessToken: string;
   auth: ConnectorAuth;

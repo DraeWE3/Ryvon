@@ -13,8 +13,6 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { ChatSDKError } from "../errors";
@@ -40,6 +38,7 @@ import {
   type WorkflowRun,
   connectorAuth,
   type ConnectorAuth,
+  verificationCode,
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
@@ -47,17 +46,32 @@ import { generateHashedPassword } from "./utils";
 // use the Drizzle adapter for Auth.js / NextAuth
 // https://authjs.dev/reference/adapter/drizzle
 
-// biome-ignore lint: Forbidden non-null assertion.
-const client = postgres(process.env.POSTGRES_URL!, {
-  max: 10,               // Max concurrent connections
-  idle_timeout: 20,       // Close idle connections after 20s
-  connect_timeout: 10,    // Fail fast if DB unreachable
-});
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+
+// Prevent multiple database connections during hot-reloading in development
+const globalForDb = globalThis as unknown as {
+  postgresClient: postgres.Sql<{}> | undefined;
+};
+
+const client =
+  globalForDb.postgresClient ??
+  postgres(process.env.POSTGRES_URL!, {
+    max: 5, // Small pool to handle parallel queries without exhaustion
+    idle_timeout: 30,
+    connect_timeout: 60,
+    ssl: "require",
+  });
+
+if (process.env.NODE_ENV !== "production") globalForDb.postgresClient = client;
+
 export const db = drizzle(client);
 
 export async function getUser(email: string): Promise<User[]> {
   try {
-    return await db.select().from(user).where(eq(user.email, email));
+    return await db.select()
+      .from(user)
+      .where(sql`LOWER(${user.email}) = LOWER(${email})`);
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
@@ -71,8 +85,38 @@ export async function createUser(email: string, password: string) {
 
   try {
     return await db.insert(user).values({ email, password: hashedPassword });
+  } catch (_error: any) {
+    console.error("RAW DB ERROR CREATE USER:", _error);
+    throw new Error(`DB Error: ${_error.message || "Failed to create user"}`);
+  }
+}
+
+export async function createVerificationCode(email: string) {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+  try {
+    // Delete any existing codes for this email
+    await db.delete(verificationCode).where(sql`LOWER(${verificationCode.email}) = LOWER(${email})`);
+    
+    // Insert new code
+    await db.insert(verificationCode).values({ email, code, expiresAt });
+    return code;
+  } catch (_error: any) {
+    console.error("RAW DB ERROR CREATE VC:", _error);
+    throw new Error(`DB Error VC: ${_error.message || "Failed to create verification code"}`);
+  }
+}
+
+export async function getVerificationCode(email: string) {
+  try {
+    const [result] = await db
+      .select()
+      .from(verificationCode)
+      .where(sql`LOWER(${verificationCode.email}) = LOWER(${email})`);
+    return result || null;
   } catch (_error) {
-    throw new ChatSDKError("bad_request:database", "Failed to create user");
+    return null;
   }
 }
 
@@ -100,7 +144,7 @@ export async function upsertGoogleUser(
           name: name || existing[0].name,
           image: image || existing[0].image,
         })
-        .where(eq(user.email, email))
+        .where(sql`LOWER(${user.email}) = LOWER(${email})`)
         .returning();
       return updated;
     }
@@ -292,13 +336,23 @@ export async function getChatById({ id }: { id: string }) {
     return null;
   }
 
-  try {
-    const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
-    return selectedChat || null;
-  } catch (error) {
-    console.error(`[getChatById] Database error fetching chat ${id}:`, error);
-    throw new ChatSDKError("bad_request:database", "Failed to get chat by id");
+  // Retry up to 2 times for transient connection pool errors
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
+      return selectedChat || null;
+    } catch (error: any) {
+      console.error(`[getChatById] Attempt ${attempt + 1} failed for chat ${id}:`, error?.message || error);
+      if (attempt < 2) {
+        // Brief pause before retry to allow connection pool to recover
+        await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+        continue;
+      }
+      // After all retries exhausted, return null instead of crashing the page
+      return null;
+    }
   }
+  return null;
 }
 
 export async function saveMessages({ messages }: { messages: DBMessage[] }) {
@@ -929,6 +983,7 @@ export async function createRun(data: {
         userId: data.userId,
         triggeredBy: data.triggeredBy ?? "manual",
         status: "pending",
+        startedAt: new Date(),
       })
       .returning();
     return result;
@@ -1062,43 +1117,72 @@ export async function upsertConnectorAuth(data: {
   accountName?: string;
   metadata?: any;
 }) {
-  try {
-    // Single atomic upsert — replaces the old SELECT + INSERT/UPDATE pattern (2 queries → 1)
-    const [result] = await db
-      .insert(connectorAuth)
-      .values({
-        userId: data.userId,
-        provider: data.provider,
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-        tokenType: data.tokenType || "Bearer",
-        scope: data.scope,
-        expiresAt: data.expiresAt,
-        accountEmail: data.accountEmail,
-        accountName: data.accountName,
-        metadata: data.metadata,
-      })
-      .onConflictDoUpdate({
-        target: [connectorAuth.userId, connectorAuth.provider],
-        set: {
-          accessToken: sql`COALESCE(${data.accessToken}, ${connectorAuth.accessToken})`,
-          refreshToken: sql`COALESCE(${data.refreshToken ?? null}, ${connectorAuth.refreshToken})`,
-          tokenType: sql`COALESCE(${data.tokenType ?? null}, ${connectorAuth.tokenType})`,
-          scope: sql`COALESCE(${data.scope ?? null}, ${connectorAuth.scope})`,
-          expiresAt: data.expiresAt ?? sql`${connectorAuth.expiresAt}`,
-          accountEmail: sql`COALESCE(${data.accountEmail ?? null}, ${connectorAuth.accountEmail})`,
-          accountName: sql`COALESCE(${data.accountName ?? null}, ${connectorAuth.accountName})`,
-          metadata: data.metadata ? sql`${data.metadata}` : sql`${connectorAuth.metadata}`,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return result;
-  } catch (_error) {
-    throw new ChatSDKError(
-      "bad_request:database",
-      "Failed to upsert connector auth"
-    );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      // Try to find existing record first
+      const existing = await db
+        .select()
+        .from(connectorAuth)
+        .where(
+          and(
+            eq(connectorAuth.userId, data.userId),
+            eq(connectorAuth.provider, data.provider)
+          )
+        );
+
+      if (existing.length > 0) {
+        // Update existing
+        const [result] = await db
+          .update(connectorAuth)
+          .set({
+            accessToken: data.accessToken || existing[0].accessToken,
+            refreshToken: data.refreshToken ?? existing[0].refreshToken,
+            tokenType: data.tokenType || existing[0].tokenType,
+            scope: data.scope ?? existing[0].scope,
+            expiresAt: data.expiresAt ?? existing[0].expiresAt,
+            accountEmail: data.accountEmail || existing[0].accountEmail,
+            accountName: data.accountName || existing[0].accountName,
+            metadata: data.metadata ?? existing[0].metadata,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(connectorAuth.userId, data.userId),
+              eq(connectorAuth.provider, data.provider)
+            )
+          )
+          .returning();
+        return result;
+      } else {
+        // Insert new
+        const [result] = await db
+          .insert(connectorAuth)
+          .values({
+            userId: data.userId,
+            provider: data.provider,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            tokenType: data.tokenType || "Bearer",
+            scope: data.scope,
+            expiresAt: data.expiresAt,
+            accountEmail: data.accountEmail,
+            accountName: data.accountName,
+            metadata: data.metadata,
+          })
+          .returning();
+        return result;
+      }
+    } catch (error) {
+      console.error(`DB Error in upsertConnectorAuth (attempt ${attempt + 1}):`, error);
+      if (attempt < 2) {
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      throw new ChatSDKError(
+        "bad_request:database",
+        "Failed to upsert connector auth"
+      );
+    }
   }
 }
 

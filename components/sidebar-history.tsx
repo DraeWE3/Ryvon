@@ -2,21 +2,12 @@
 
 import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { motion } from "framer-motion";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import type { User } from "next-auth";
 import { useState } from "react";
 import { toast } from "sonner";
 import useSWRInfinite from "swr/infinite";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AuthNotificationModal } from "@/components/auth-notification-modal";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -99,6 +90,7 @@ export function getChatHistoryPaginationKey(
 
 export function SidebarHistory({ user }: { user: User | undefined }) {
   const { setOpenMobile } = useSidebar();
+  const pathname = usePathname();
   const { id } = useParams();
 
   const {
@@ -114,6 +106,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const hasReachedEnd = paginatedChatHistories
     ? paginatedChatHistories.some((page) => page.hasMore === false)
@@ -123,32 +116,27 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     ? paginatedChatHistories.every((page) => page.chats.length === 0)
     : false;
 
-  const handleDelete = () => {
-    const deletePromise = fetch(`/api/chat?id=${deleteId}`, {
-      method: "DELETE",
-    });
-
-    toast.promise(deletePromise, {
-      loading: "Deleting chat...",
-      success: () => {
-        mutate((chatHistories) => {
-          if (chatHistories) {
-            return chatHistories.map((chatHistory) => ({
-              ...chatHistory,
-              chats: chatHistory.chats.filter((chat) => chat.id !== deleteId),
-            }));
-          }
-        });
-
-        return "Chat deleted successfully";
-      },
-      error: "Failed to delete chat",
-    });
-
-    setShowDeleteDialog(false);
-
-    if (deleteId === id) {
-      router.push("/");
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await fetch(`/api/chat?id=${deleteId}`, { method: "DELETE" });
+      mutate((chatHistories) => {
+        if (chatHistories) {
+          return chatHistories.map((chatHistory) => ({
+            ...chatHistory,
+            chats: chatHistory.chats.filter((chat) => chat.id !== deleteId),
+          }));
+        }
+      });
+      toast.success("Chat deleted successfully");
+      if (pathname === `/chat/${deleteId}`) {
+        router.push("/");
+      }
+    } catch (e) {
+      toast.error("Failed to delete chat");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -227,23 +215,19 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
         }}
       />
 
-      <AlertDialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your
-              chat and remove it from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>
-              Continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AuthNotificationModal
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        type="error"
+        title="Are you absolutely sure?"
+        message="This action cannot be undone. This will permanently delete your chat and remove it from our servers."
+        onConfirm={handleDelete}
+        confirmText="Delete"
+        onCancel={() => setShowDeleteDialog(false)}
+        cancelText="Cancel"
+        loading={isDeleting}
+        hideIcon={true}
+      />
     </>
   );
 }

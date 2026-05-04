@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { X, Search } from 'lucide-react'
+import { AuthNotificationModal, type AuthNotificationType } from '@/components/auth-notification-modal'
 
 // Map connector ID -> Simple Icons slug (see https://simpleicons.org)
 const ICON_SLUGS: Record<string, string> = {
@@ -281,6 +282,8 @@ function ConnectorCardItem({
 
 export default function ConnectorsPage() {
   const queryClient = useQueryClient()
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
   const { data: connectors, isLoading } = useQuery<Connector[]>({
     queryKey: ['connectors'],
@@ -290,6 +293,31 @@ export default function ConnectorsPage() {
       return res.json()
     },
   })
+
+  // Handle OAuth callback URL params (?connected=provider or ?error=...)
+  useEffect(() => {
+    const connected = searchParams.get('connected')
+    const error = searchParams.get('error')
+
+    if (connected) {
+      setNotifModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Connected!',
+        message: `${connected.charAt(0).toUpperCase() + connected.slice(1)} has been connected successfully.`,
+      })
+      queryClient.invalidateQueries({ queryKey: ['connectors'] })
+      router.replace('/workflows/connectors')
+    } else if (error) {
+      setNotifModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Connection Failed',
+        message: `Could not connect: ${decodeURIComponent(error)}`,
+      })
+      router.replace('/workflows/connectors')
+    }
+  }, [searchParams, queryClient, router])
   
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -300,9 +328,17 @@ export default function ConnectorsPage() {
   const [isSavingKey, setIsSavingKey] = useState(false)
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null)
 
+  // Notification Modal State
+  const [notifModal, setNotifModal] = useState<{
+    isOpen: boolean;
+    type: AuthNotificationType;
+    title: string;
+    message: string;
+  }>({ isOpen: false, type: 'success', title: '', message: '' })
+
   const handleConnect = (providerId: string) => {
-    // Open OAuth flow in a new tab
-    window.open(`/api/connectors/${providerId}/auth`, '_blank')
+    // Navigate in the SAME tab so the user returns here naturally
+    window.location.href = `/api/connectors/${providerId}/auth`
   }
 
   const handleSaveApiKey = async (e: React.FormEvent) => {
@@ -323,13 +359,23 @@ export default function ConnectorsPage() {
 
       if (!res.ok) throw new Error('Failed to save API Key')
       
-      toast.success(`${addingKeyFor.name} connected successfully`)
+      setNotifModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Connected!',
+        message: `${addingKeyFor.name} has been connected successfully.`,
+      })
       queryClient.invalidateQueries({ queryKey: ['connectors'] })
       setAddingKeyFor(null)
       setApiKeyInput('')
       setAccountNameInput('')
     } catch (err) {
-      toast.error('Failed to save API Key')
+      setNotifModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Failed',
+        message: 'Could not save API Key. Please try again.',
+      })
     } finally {
       setIsSavingKey(false)
     }
@@ -341,9 +387,19 @@ export default function ConnectorsPage() {
       const res = await fetch(`/api/connectors/${providerId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to disconnect')
       queryClient.invalidateQueries({ queryKey: ['connectors'] })
-      toast.success('Connector disconnected')
+      setNotifModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Disconnected',
+        message: 'Connector has been disconnected successfully.',
+      })
     } catch {
-      toast.error('Failed to disconnect connector')
+      setNotifModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Failed',
+        message: 'Could not disconnect connector. Please try again.',
+      })
     } finally {
       setDisconnectingId(null)
     }
@@ -526,6 +582,14 @@ export default function ConnectorsPage() {
           </div>
         </div>
       )}
+
+      <AuthNotificationModal
+        isOpen={notifModal.isOpen}
+        onClose={() => setNotifModal(prev => ({ ...prev, isOpen: false }))}
+        type={notifModal.type}
+        title={notifModal.title}
+        message={notifModal.message}
+      />
     </div>
   )
 }

@@ -80,11 +80,17 @@ export function useDeleteWorkflow() {
 }
 
 export function useRunWorkflow() {
+  const queryClient = useQueryClient()
+  
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/workflows/${id}/run`, { method: 'POST' })
       if (!res.ok) throw new Error('Failed to trigger workflow run')
       return res.json()
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-runs', id] })
+      queryClient.invalidateQueries({ queryKey: ['workflow-stats'] })
     },
   })
 }

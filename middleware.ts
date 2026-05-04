@@ -1,7 +1,4 @@
-import NextAuth from 'next-auth';
-import { authConfig } from './app/(auth)/auth.config';
-
-const { auth } = NextAuth(authConfig);
+import { auth } from './app/(auth)/auth';
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
@@ -21,7 +18,9 @@ export default auth((req) => {
     nextUrl.pathname.startsWith("/settings") ||
     nextUrl.pathname.startsWith("/workflows/connectors");
 
-  if (!isLoggedIn && isProtectedPage) {
+  const isGuest = req.auth?.user?.type === "guest";
+
+  if ((!isLoggedIn || isGuest) && isProtectedPage) {
     return Response.redirect(new URL("/register", nextUrl));
   }
 

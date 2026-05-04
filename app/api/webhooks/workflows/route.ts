@@ -3,6 +3,7 @@ import {
   getActiveWorkflowsByEventValue,
   createRun,
 } from '@/lib/db/queries'
+import { executeWorkflowRun } from '@/lib/workflows/engine'
 
 // Webhook listener endpoint for event-triggered workflows.
 // External services call POST /api/webhooks/workflows with a JSON body
@@ -10,6 +11,13 @@ import {
 // All active workflows matching that event will be triggered.
 export async function POST(request: NextRequest) {
   try {
+    const signature = request.headers.get('x-ryvon-signature')
+    const secret = process.env.WEBHOOK_SECRET
+
+    if (secret && signature !== secret) {
+      return NextResponse.json({ error: 'Unauthorized: Invalid signature' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { event, payload } = body
 
@@ -56,15 +64,9 @@ export async function POST(request: NextRequest) {
 
       triggered.push({ workflow_id: wf.id, run_id: run.id })
 
-      // Fire-and-forget: trigger execution
-      const baseUrl =
-        process.env.NEXTAUTH_URL ||
-        (process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : 'http://localhost:3000')
-
-      fetch(`${baseUrl}/api/runs/${run.id}/stream`).catch((err) => {
-        console.error(`Failed to trigger run ${run.id}:`, err)
+      // Fire-and-forget: execute directly (no HTTP roundtrip)
+      executeWorkflowRun(run.id, wf.userId).catch((err) => {
+        console.error(`[Webhook] Failed to execute run ${run.id}:`, err)
       })
     }
 

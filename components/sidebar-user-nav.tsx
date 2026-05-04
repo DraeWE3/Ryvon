@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 import { ChevronUp } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -28,6 +30,7 @@ export function SidebarUserNav({ user }: { user: User }) {
   const { setTheme, resolvedTheme } = useTheme();
 
   const isGuest = guestRegex.test(data?.user?.email ?? "");
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
 
   return (
     <SidebarMenu>
@@ -82,7 +85,8 @@ export function SidebarUserNav({ user }: { user: User }) {
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
-                className="w-full cursor-pointer"
+                className="w-full cursor-pointer flex items-center justify-start"
+                disabled={isSigningOut}
                 onClick={() => {
                   if (status === "loading") {
                     toast({
@@ -97,14 +101,24 @@ export function SidebarUserNav({ user }: { user: User }) {
                   if (isGuest) {
                     router.push("/login");
                   } else {
+                    setIsSigningOut(true);
                     signOut({
-                      redirectTo: "/",
+                      callbackUrl: "/",
                     });
                   }
                 }}
                 type="button"
               >
-                {isGuest ? "Login to your account" : "Sign out"}
+                {isSigningOut ? (
+                  <div className="flex flex-row items-center gap-2">
+                    <div className="animate-spin">
+                      <LoaderIcon />
+                    </div>
+                    <span>Signing out...</span>
+                  </div>
+                ) : (
+                  isGuest ? "Login to your account" : "Sign out"
+                )}
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>

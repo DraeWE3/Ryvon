@@ -2,6 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { useWorkflows, useWorkflowStats, usePatchWorkflow } from '@/features/workflows/hooks/useWorkflows'
@@ -14,6 +15,7 @@ import { SidebarToggle } from '@/components/sidebar-toggle'
 import { toast } from 'react-hot-toast'
 
 export default function WorkflowsDashboard() {
+  const router = useRouter()
   const { data: session } = useSession()
   const userId = session?.user?.id || 'temp-user-id'
 
@@ -41,7 +43,34 @@ export default function WorkflowsDashboard() {
   const { setCreateDrawerOpen, setSelectedTemplate } = useWorkflowUIStore()
   const { mutate: patchWorkflow } = usePatchWorkflow()
 
+  const handleRun = async (id: string) => {
+    if (session?.user?.type === 'guest') {
+      toast.error('Sign in to run workflows!')
+      router.push('/register')
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/workflows/${id}/run`, {
+        method: 'POST',
+      })
+
+      if (!res.ok) throw new Error('Failed to run workflow')
+      
+      toast.success('Automation started!')
+      router.push(`/workflows/${id}`) // Redirect to details
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to start automation')
+    }
+  }
+
   const handleToggle = (id: string, active: boolean) => {
+    if (session?.user?.type === 'guest') {
+      toast.error('Sign in to manage workflows!')
+      router.push('/register')
+      return
+    }
     patchWorkflow({ id, data: { active } }, {
       onSuccess: () => toast.success(`Workflow ${active ? 'enabled' : 'disabled'}`),
       onError: () => toast.error('Failed to update workflow')
@@ -80,14 +109,28 @@ export default function WorkflowsDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <Link
-            href="/workflows/connectors"
+          <button
+            onClick={() => {
+              if (session?.user?.type === 'guest') {
+                toast.error('Sign in to manage connectors!')
+                router.push('/register')
+                return
+              }
+              router.push('/workflows/connectors')
+            }}
             className="flex-1 md:flex-none text-center font-motive text-[13px] text-[rgba(255,255,255,0.60)] hover:text-[#ffffff] border border-[rgba(255,255,255,0.10)] hover:border-[rgba(255,255,255,0.20)] rounded-full px-[20px] py-[10px] transition-all"
           >
             🔌 Connectors
-          </Link>
+          </button>
           <button
-            onClick={() => setCreateDrawerOpen(true)}
+            onClick={() => {
+              if (session?.user?.type === 'guest') {
+                toast.error('Sign in to create workflows!')
+                router.push('/register')
+                return
+              }
+              setCreateDrawerOpen(true)
+            }}
             className="flex-1 md:flex-none font-motive text-[13px] text-[#ffffff] rounded-full px-[20px] py-[10px] transition-all hover:opacity-90 active:scale-[0.97]"
             style={{
               background: 'linear-gradient(180deg, #A8CEE5 0%, #007DC0 50%, #001C3C 100%)',
@@ -138,6 +181,7 @@ export default function WorkflowsDashboard() {
           isError={isWorkflowsError}
           onRetry={refetchWorkflows}
           onToggle={handleToggle}
+          onRun={handleRun}
         />
       </div>
 

@@ -4,21 +4,34 @@ import { auth } from '@/app/(auth)/auth'
 import { executeStep } from '@/lib/connectors/executor'
 
 // SSE streaming endpoint for live run updates.
-// Each step is executed by AI, producing real output instead of dummy text.
+// Supports two modes:
+//   1. Browser SSE: User opens this endpoint in the browser (has session cookies)
+//   2. Internal fire-and-forget: Called from /api/workflows/[id]/run without cookies
+//      → Falls back to the userId stored on the run record itself
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return new Response('Unauthorized', { status: 401 })
-  }
-
   const { id } = await params
 
+  // Look up the run first — we need it for both auth paths
   const run = await getRunById({ id })
   if (!run) {
     return new Response('Run not found', { status: 404 })
+  }
+
+  // Try session auth first (browser), fall back to run's own userId (internal)
+  let userId: string
+  const session = await auth()
+  if (session?.user?.id) {
+    userId = session.user.id
+  } else {
+    // Internal server-to-server call — use the userId that was saved when the run was created
+    userId = run.userId
+  }
+
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const workflow = await getWorkflowById({ id: run.workflowId })
@@ -32,7 +45,11 @@ export async function GET(
   const stream = new ReadableStream({
     async start(controller) {
       const sendEvent = (data: any) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        } catch {
+          // Controller may already be closed
+        }
       }
 
       try {
@@ -61,24 +78,28 @@ export async function GET(
           sendEvent({ status: 'running', step_results: [...stepResults] })
 
           try {
-            // Execute step using our real connector handlers
-            const output = await executeStep({
-              userId: session.user.id,
+            // Execute step using our real connector handlers with a 45-second timeout
+            const executePromise = executeStep({
+              userId,
               step,
               previousOutputs,
-            })
+            });
+            
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Step execution timed out after 45 seconds')), 45000)
+            );
 
-            const aiOutput = output
+            const output = await Promise.race([executePromise, timeoutPromise]) as string;
 
             const duration = Date.now() - startTime
 
             stepResults[i] = {
               ...runningResult,
               status: 'success' as const,
-              output: aiOutput.trim(),
+              output: output.trim(),
               duration_ms: duration,
             }
-            previousOutputs.push(aiOutput.trim())
+            previousOutputs.push(output.trim())
 
           } catch (stepError: any) {
             const duration = Date.now() - startTime

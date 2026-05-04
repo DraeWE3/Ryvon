@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
 import { SelectItem } from "@/components/ui/select";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { chatModels } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
@@ -85,6 +87,8 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const session = useSession();
+  const router = useRouter();
   const { isListening, transcript, toggle } = useSpeechToText();
 
   // Update input text as user speaks
@@ -372,17 +376,34 @@ function PureMultimodalInput({
       <div className="input-actions">
         {!isArtifactVisible && (
           <div className="left">
-            <label
+            <div 
               className="selection cursor-pointer"
-              htmlFor="chat-file-upload"
+              onClick={() => {
+                if (session.data?.user?.type === "guest") {
+                  toast.info("Sign in to attach files and use advanced vision features!");
+                  router.push("/register");
+                  return;
+                }
+                fileInputRef.current?.click();
+              }}
             >
               <img src="/img/att.svg" alt="" />
               <p>Attach</p>
-            </label>
-            <Link href="/settings" className="selection cursor-pointer relative" prefetch={true}>
+            </div>
+            <div 
+              className="selection cursor-pointer relative"
+              onClick={() => {
+                if (session.data?.user?.type === "guest") {
+                  toast.info("Sign in to access personalized settings!");
+                  router.push("/register");
+                  return;
+                }
+                router.push("/settings");
+              }}
+            >
               <img src="/img/set.svg" alt="" />
               <p>Settings</p>
-            </Link>
+            </div>
             <div className="selection cursor-pointer relative">
               <ModelSelectorCompact
                 onModelChange={onModelChange}
@@ -398,7 +419,14 @@ function PureMultimodalInput({
                 "mic-btn cursor-pointer rounded-full p-1.5 transition-all flex items-center justify-center",
                 isListening && "bg-blue-500/10 animate-pulse-blue"
               )}
-              onClick={toggle}
+              onClick={() => {
+                if (session.data?.user?.type === "guest") {
+                  toast.info("Voice input is available for registered users!");
+                  router.push("/register");
+                  return;
+                }
+                toggle();
+              }}
               title={isListening ? "Stop Recording" : "Start Voice Input"}
             >
               <img 

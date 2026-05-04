@@ -5,20 +5,35 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signIn as nextAuthSignIn } from "next-auth/react";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, useRef } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { AuthForm } from "@/components/auth-form";
 import { SubmitButton } from "@/components/submit-button";
-import { toast } from "@/components/toast";
+import { AuthNotificationModal, type AuthNotificationType } from "@/components/auth-notification-modal";
 import { type LoginActionState, login } from "../actions";
 
 export default function Page() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isSuccessful, setIsSuccessful] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const lastStatusRef = useRef<string | null>(null);
+  
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    type: AuthNotificationType;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+  });
 
   const [state, formAction, isPending] = useActionState<LoginActionState, FormData>(
     login,
@@ -30,25 +45,32 @@ export default function Page() {
   const { data: session, status: sessionStatus, update: updateSession } = useSession();
 
   useEffect(() => {
-    if (sessionStatus === "authenticated") {
+    if (sessionStatus === "authenticated" && session?.user?.type !== "guest") {
       router.push("/");
     }
-  }, [sessionStatus, router]);
+  }, [sessionStatus, session, router]);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
+    if (state.status === "idle" || state.status === lastStatusRef.current) return;
+    lastStatusRef.current = state.status;
+
     if (state.status === "failed") {
-      toast({
+      setModalState({
+        isOpen: true,
         type: "error",
-        description: "Invalid credentials!",
+        title: "Login Failed",
+        message: "Invalid credentials. Please check your email and password.",
       });
     } else if (state.status === "invalid_data") {
-      toast({
+      setModalState({
+        isOpen: true,
         type: "error",
-        description: "Failed validating your submission!",
+        title: "Invalid Data",
+        message: "Failed validating your submission!",
       });
     } else if (state.status === "success") {
       setIsSuccessful(true);
@@ -65,11 +87,10 @@ export default function Page() {
       const res = await fetch("/api/auth/csrf");
       const { csrfToken } = await res.json();
 
-      // Create a hidden form to submit a POST request in a new tab
+      // Create a hidden form to submit a POST request in the SAME tab
       const form = document.createElement("form");
       form.method = "POST";
       form.action = "/api/auth/signin/google";
-      form.target = "_blank";
 
       const csrfInput = document.createElement("input");
       csrfInput.type = "hidden";
@@ -85,10 +106,6 @@ export default function Page() {
 
       document.body.appendChild(form);
       form.submit();
-      document.body.removeChild(form);
-      
-      // Stop loading spinner after 5 seconds in case they close the tab
-      setTimeout(() => setIsGoogleLoading(false), 5000);
     } catch (error) {
       console.error("Failed to start Google auth:", error);
       setIsGoogleLoading(false);
@@ -224,7 +241,7 @@ export default function Page() {
                     placeholder="Enter email or phone"
                     className="input-field"
                     required
-                    defaultValue={email}
+                    defaultValue=""
                   />
                 </div>
               </div>
@@ -237,13 +254,20 @@ export default function Page() {
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                   </svg>
                   <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"}
                     id="password" 
                     name="password" 
                     placeholder="Password"
                     className="input-field"
                     required
                   />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
 
@@ -267,6 +291,14 @@ export default function Page() {
           </motion.p>
         </footer>
       </div>
+
+      <AuthNotificationModal
+        isOpen={modalState.isOpen}
+        onClose={() => setModalState(prev => ({ ...prev, isOpen: false }))}
+        type={modalState.type}
+        title={modalState.title}
+        message={modalState.message}
+      />
     </motion.div>
   );
 }

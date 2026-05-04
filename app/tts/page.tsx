@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { SidebarToggle } from '@/components/sidebar-toggle';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { cn } from '@/lib/utils';
+import { toast } from 'react-hot-toast';
 
 export default function TextToSpeechPage() {
   const router = useRouter();
@@ -12,6 +14,7 @@ export default function TextToSpeechPage() {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const { data: session } = useSession();
   const { isListening, transcript, toggle } = useSpeechToText();
 
   useEffect(() => {
@@ -27,7 +30,16 @@ export default function TextToSpeechPage() {
     setMounted(true);
   }, []);
 
+  const handleGuestRedirect = (feature: string) => {
+    toast.error(`Sign in to use ${feature}!`);
+    router.push('/register');
+  };
+
   const generateSpeech = () => {
+    if (session?.user?.type === 'guest') {
+      handleGuestRedirect('AI Text-to-Speech');
+      return;
+    }
     if (!text.trim() || isGenerating) {
       setError('Please enter text');
       return;
@@ -79,11 +91,11 @@ export default function TextToSpeechPage() {
 
               <div className="input-actions">
                 <div className="left">
-                  <div className="selection cursor-pointer">
+                  <div className="selection cursor-pointer" onClick={() => handleGuestRedirect('file attachments')}>
                     <img src="/img/att.svg" alt="" />
                     <p>Attach</p>
                   </div>
-                  <div className="selection cursor-pointer">
+                  <div className="selection cursor-pointer" onClick={() => handleGuestRedirect('settings')}>
                     <img src="/img/set.svg" alt="" />
                     <p>Settings</p>
                   </div>
@@ -94,7 +106,13 @@ export default function TextToSpeechPage() {
                       "mic-btn cursor-pointer rounded-full p-1.5 transition-all flex items-center justify-center",
                       isListening && "bg-blue-500/10 animate-[pulse-blue_2s_infinite]"
                     )}
-                    onClick={toggle}
+                    onClick={() => {
+                      if (session?.user?.type === 'guest') {
+                        handleGuestRedirect('voice input');
+                        return;
+                      }
+                      toggle();
+                    }}
                     title={isListening ? "Stop Recording" : "Start Voice Input"}
                   >
                     <img 

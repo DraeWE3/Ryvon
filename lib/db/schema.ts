@@ -22,9 +22,20 @@ export const user = pgTable("User", {
   image: text("image"),
   companyName: varchar("companyName", { length: 255 }),
   timezone: varchar("timezone", { length: 64 }),
+  isVerified: boolean("isVerified").notNull().default(false),
 });
 
 export type User = InferSelectModel<typeof user>;
+
+export const verificationCode = pgTable("VerificationCode", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  email: varchar("email", { length: 64 }).notNull(),
+  code: varchar("code", { length: 6 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type VerificationCode = InferSelectModel<typeof verificationCode>;
 
 export const chat = pgTable("Chat", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),

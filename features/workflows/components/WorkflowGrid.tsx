@@ -13,6 +13,7 @@ interface WorkflowGridProps {
   isError: boolean;
   onRetry: () => void;
   onToggle: (id: string, active: boolean) => void;
+  onRun: (id: string) => void;
 }
 
 export function WorkflowGrid({ 
@@ -20,7 +21,8 @@ export function WorkflowGrid({
   isLoading, 
   isError, 
   onRetry,
-  onToggle 
+  onToggle,
+  onRun
 }: WorkflowGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +80,7 @@ export function WorkflowGrid({
             key={workflow.id} 
             workflow={workflow} 
             onToggle={onToggle}
-            onRun={() => {}} // Placeholder for direct run if needed
+            onRun={onRun}
             isTemplate={(workflow as any).isTemplate}
             onUseTemplate={(workflow as any).onUseTemplate}
           />

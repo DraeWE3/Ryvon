@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRun, getWorkflowById } from '@/lib/db/queries'
 import { auth } from '@/app/(auth)/auth'
+import { executeWorkflowRun } from '@/lib/workflows/engine'
 
 export async function POST(
   request: NextRequest,
@@ -24,6 +25,12 @@ export async function POST(
       workflowId: id,
       userId: session.user.id,
       triggeredBy: 'manual',
+    })
+
+    // Fire-and-forget: execute the workflow directly (no HTTP roundtrip)
+    // This avoids the auth cookie / connection drop issues
+    executeWorkflowRun(run.id, session.user.id).catch((err) => {
+      console.error(`[Run] Failed to execute run ${run.id}:`, err)
     })
 
     return NextResponse.json({
